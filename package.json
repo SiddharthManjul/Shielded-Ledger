@@ -1,0 +1,25 @@
+{
+  "name": "diffipay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DiffiPay - Privacy-preserving payment solution with ZK proofs",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "frontend:dev": "npm run dev --workspace=frontend",
+    "frontend:build": "npm run build --workspace=frontend",
+    "frontend:start": "npm run start --workspace=frontend",
+    "contracts:test": "cd packages/contracts && forge test",
+    "contracts:build": "cd packages/contracts && forge build",
+    "circuits:compile": "cd packages/circuits && npm run compile",
+    "circuits:test": "cd packages/circuits && npm run test",
+    "install:all": "npm install && npm run install:circuits",
+    "install:circuits": "cd packages/circuits && npm install"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
