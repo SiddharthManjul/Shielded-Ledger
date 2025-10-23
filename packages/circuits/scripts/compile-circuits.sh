@@ -7,6 +7,6 @@ echo "Compiling circuits..."
 mkdir -p build
 
 # Compile example circuit
-circom circuits/example.circom --r1cs --wasm --sym -o build/
+circom src/deposit.circom --r1cs --wasm --sym -o build/
 
 echo "Compilation complete!"
