@@ -13,17 +13,22 @@ contract zkERC20 is IzkERC20, Ownable, ReentrancyGuard {
 
     using MerkleTree for MerkleTree.Tree;
 
-    IGroth16Verifier public immutable depositVerifier;
-    IGroth16Verifier public immutable transferVerifier;
-    IGroth16Verifier public immutable withdrawVerifier;
-    ICollateralManager public immutable collateralManager;
+    IGroth16Verifier public immutable DEPOSIT_VERIFIER;
+    IGroth16Verifier public immutable TRANSFER_VERIFIER;
+    IGroth16Verifier public immutable WITHDRAW_VERIFIER;
+
+    ICollateralManager public immutable COLLATERAL_MANAGER;
+
     MerkleTree.Tree private commitmentTree;
+
     mapping(bytes32 => bool) public nullifiers;
     mapping(bytes32 => uint256) public commitmentIndex;
 
     string public name;
+
     string public symbol;
-    uint256 public immutable denomination;
+
+    uint256 public immutable DENOMINATION;
 
     error InvalidProof();
     error NullifierAlreadySpent();
@@ -44,46 +49,49 @@ contract zkERC20 is IzkERC20, Ownable, ReentrancyGuard {
     ) Ownable(msg.sender) {
         name = _name;
         symbol = _symbol;
-        depositVerifier = IGroth16Verifier(_depositVerifier);
-        transferVerifier = IGroth16Verifier(_transferVerifier);
-        withdrawVerifier = IGroth16Verifier(_withdrawVerifier);
-        collateralManager = ICollateralManager(_collateralManager);
-        denomination = _denomination;
+        DEPOSIT_VERIFIER = IGroth16Verifier(_depositVerifier);
+        TRANSFER_VERIFIER = IGroth16Verifier(_transferVerifier);
+        WITHDRAW_VERIFIER = IGroth16Verifier(_withdrawVerifier);
+        COLLATERAL_MANAGER = ICollateralManager(_collateralManager);
+        DENOMINATION = _denomination;
         commitmentTree.initialize();
     }
 
     function deposit(
+        uint256 amount,
         bytes32 commitment,
+        bytes32 nullifierHash,
         bytes calldata encryptedNote,
         uint256[2] calldata proofA,
         uint256[2][2] calldata proofB,
         uint256[2] calldata proofC
-    ) external override nonReentrant {
+    ) external nonReentrant {
         if (_commitmentExists(commitment)) {
             revert CommitmentAlreadyExists();
         }
-
-        uint256[] memory publicInputs = new uint256[](denomination > 0 ? 2 : 1);
-        publicInputs[0] = uint256(commitment);
-        if (denomination > 0) {
-            publicInputs[1] = denomination;
+        if (nullifiers[nullifierHash]) {
+            revert NullifierAlreadySpent();
         }
 
-        bool proofValid = depositVerifier.verifyProof(proofA, proofB, proofC, publicInputs);
+        uint256[] memory publicInputs = new uint256[](2);
+        publicInputs[0] = uint256(commitment);
+        publicInputs[1] = uint256(nullifierHash);
+
+        bool proofValid = DEPOSIT_VERIFIER.verifyProof(proofA, proofB, proofC, publicInputs);
         if (!proofValid) {
             revert InvalidProof();
         }
 
-        uint256 amountToLock = denomination > 0 ? denomination : _extractAmountFromProof(publicInputs);
+        address underlyingToken = COLLATERAL_MANAGER.getUnderlyingToken(address(this));
+        require(IERC20(underlyingToken).transferFrom(msg.sender, address(this), amount), "Transfer failed");
+        IERC20(underlyingToken).approve(address(COLLATERAL_MANAGER), amount);
 
-        address underlyingToken = collateralManager.getUnderlyingToken(address(this));
-        IERC20(underlyingToken).transferFrom(msg.sender, address(this), amountToLock);
-        IERC20(underlyingToken).approve(address(collateralManager), amountToLock);
-
-        bool locked = collateralManager.lockCollateral(address(this), amountToLock, commitment);
+        bool locked = COLLATERAL_MANAGER.lockCollateral(address(this), amount, commitment);
         if (!locked) {
             revert TransferFailed();
         }
+
+        nullifiers[nullifierHash] = true;
 
         uint256 index = commitmentTree.insert(commitment);
         commitmentIndex[commitment] = index;
@@ -93,14 +101,14 @@ contract zkERC20 is IzkERC20, Ownable, ReentrancyGuard {
     }
 
     function transfer(
-        bytes32[] calldata inputNullifiers,
-        bytes32[] calldata outputCommitments,
+        bytes32[2] calldata inputNullifiers,
+        bytes32[2] calldata outputCommitments,
         bytes32 merkleRoot,
         bytes[] calldata encryptedNotes,
         uint256[2] calldata proofA,
         uint256[2][2] calldata proofB,
         uint256[2] calldata proofC
-    ) external override nonReentrant {
+    ) external nonReentrant {
         _validateTransferInputs(inputNullifiers, outputCommitments, encryptedNotes, merkleRoot);
 
         _verifyTransferProof(inputNullifiers, outputCommitments, merkleRoot, proofA, proofB, proofC);
@@ -109,34 +117,21 @@ contract zkERC20 is IzkERC20, Ownable, ReentrancyGuard {
     }
 
     function _validateTransferInputs(
-        bytes32[] calldata inputNullifiers,
-        bytes32[] calldata outputCommitments,
+        bytes32[2] calldata inputNullifiers,
+        bytes32[2] calldata outputCommitments,
         bytes[] calldata encryptedNotes,
         bytes32 merkleRoot
     ) private view {
-        if (inputNullifiers.length == 0 || outputCommitments.length == 0) {
-            revert InvalidArrayLength();
-        }
-        if (encryptedNotes.length != outputCommitments.length) {
+        if (encryptedNotes.length != 2) {
             revert InvalidArrayLength();
         }
 
-        for (uint256 i; i < inputNullifiers.length;) {
-            if (nullifiers[inputNullifiers[i]]) {
-                revert NullifierAlreadySpent();
-            }
-            unchecked {
-                ++i;
-            }
+        if (nullifiers[inputNullifiers[0]] || nullifiers[inputNullifiers[1]]) {
+            revert NullifierAlreadySpent();
         }
 
-        for (uint256 i; i < outputCommitments.length;) {
-            if (_commitmentExists(outputCommitments[i])) {
-                revert CommitmentAlreadyExists();
-            }
-            unchecked {
-                ++i;
-            }
+        if (_commitmentExists(outputCommitments[0]) || _commitmentExists(outputCommitments[1])) {
+            revert CommitmentAlreadyExists();
         }
 
         if (merkleRoot != commitmentTree.root) {
@@ -145,106 +140,78 @@ contract zkERC20 is IzkERC20, Ownable, ReentrancyGuard {
     }
 
     function _verifyTransferProof(
-        bytes32[] calldata inputNullifiers,
-        bytes32[] calldata outputCommitments,
+        bytes32[2] calldata inputNullifiers,
+        bytes32[2] calldata outputCommitments,
         bytes32 merkleRoot,
         uint256[2] calldata proofA,
         uint256[2][2] calldata proofB,
         uint256[2] calldata proofC
     ) private view {
-        uint256[] memory publicInputs = _buildTransferPublicInputs(
-            inputNullifiers,
-            outputCommitments,
-            merkleRoot
-        );
+        uint256[] memory publicInputs = new uint256[](5);
+        publicInputs[0] = uint256(merkleRoot);
+        publicInputs[1] = uint256(inputNullifiers[0]);
+        publicInputs[2] = uint256(inputNullifiers[1]);
+        publicInputs[3] = uint256(outputCommitments[0]);
+        publicInputs[4] = uint256(outputCommitments[1]);
 
-        if (!transferVerifier.verifyProof(proofA, proofB, proofC, publicInputs)) {
+        if (!TRANSFER_VERIFIER.verifyProof(proofA, proofB, proofC, publicInputs)) {
             revert InvalidProof();
         }
     }
 
-    function _buildTransferPublicInputs(
-        bytes32[] calldata inputNullifiers,
-        bytes32[] calldata outputCommitments,
-        bytes32 merkleRoot
-    ) private pure returns (uint256[] memory) {
-        uint256[] memory publicInputs = new uint256[](
-            inputNullifiers.length + outputCommitments.length + 1
-        );
-
-        uint256 idx;
-        for (uint256 i; i < inputNullifiers.length;) {
-            publicInputs[idx++] = uint256(inputNullifiers[i]);
-            unchecked {
-                ++i;
-            }
-        }
-        for (uint256 i; i < outputCommitments.length;) {
-            publicInputs[idx++] = uint256(outputCommitments[i]);
-            unchecked {
-                ++i;
-            }
-        }
-        publicInputs[idx] = uint256(merkleRoot);
-
-        return publicInputs;
-    }
-
     function _processTransfer(
-        bytes32[] calldata inputNullifiers,
-        bytes32[] calldata outputCommitments,
+        bytes32[2] calldata inputNullifiers,
+        bytes32[2] calldata outputCommitments,
         bytes[] calldata encryptedNotes
     ) private {
-        for (uint256 i; i < inputNullifiers.length;) {
-            nullifiers[inputNullifiers[i]] = true;
-            emit NullifierSpent(inputNullifiers[i]);
-            unchecked {
-                ++i;
-            }
-        }
+        nullifiers[inputNullifiers[0]] = true;
+        nullifiers[inputNullifiers[1]] = true;
+        emit NullifierSpent(inputNullifiers[0]);
+        emit NullifierSpent(inputNullifiers[1]);
 
-        for (uint256 i; i < outputCommitments.length;) {
-            uint256 index = commitmentTree.insert(outputCommitments[i]);
-            commitmentIndex[outputCommitments[i]] = index;
-            emit NoteCommitted(outputCommitments[i], index, encryptedNotes[i]);
-            unchecked {
-                ++i;
-            }
-        }
+        uint256 index0 = commitmentTree.insert(outputCommitments[0]);
+        commitmentIndex[outputCommitments[0]] = index0;
+        emit NoteCommitted(outputCommitments[0], index0, encryptedNotes[0]);
+
+        uint256 index1 = commitmentTree.insert(outputCommitments[1]);
+        commitmentIndex[outputCommitments[1]] = index1;
+        emit NoteCommitted(outputCommitments[1], index1, encryptedNotes[1]);
     }
 
     function withdraw(
-        bytes32 nullifier,
+        uint256 amount,
         address recipient,
+        bytes32 commitment,
+        bytes32 nullifierHash,
         uint256[2] calldata proofA,
         uint256[2][2] calldata proofB,
         uint256[2] calldata proofC
-    ) external override nonReentrant {
-        if (nullifiers[nullifier]) {
+    ) external nonReentrant {
+        if (nullifiers[nullifierHash]) {
             revert NullifierAlreadySpent();
         }
 
-        uint256[] memory publicInputs = new uint256[](3);
-        publicInputs[0] = uint256(nullifier);
-        publicInputs[1] = uint256(uint160(recipient));
-        publicInputs[2] = uint256(commitmentTree.root);
+        uint256[] memory publicInputs = new uint256[](5);
+        publicInputs[0] = uint256(commitmentTree.root);
+        publicInputs[1] = amount;
+        publicInputs[2] = uint256(uint160(recipient));
+        publicInputs[3] = uint256(commitment);
+        publicInputs[4] = uint256(nullifierHash);
 
-        bool proofValid = withdrawVerifier.verifyProof(proofA, proofB, proofC, publicInputs);
+        bool proofValid = WITHDRAW_VERIFIER.verifyProof(proofA, proofB, proofC, publicInputs);
         if (!proofValid) {
             revert InvalidProof();
         }
 
-        nullifiers[nullifier] = true;
-        emit NullifierSpent(nullifier);
-        emit Withdrawal(nullifier);
+        nullifiers[nullifierHash] = true;
+        emit NullifierSpent(nullifierHash);
+        emit Withdrawal(nullifierHash);
 
-        uint256 amountToRelease = denomination > 0 ? denomination : _extractAmountFromProof(publicInputs);
-
-        bool released = collateralManager.releaseCollateral(
+        bool released = COLLATERAL_MANAGER.releaseCollateral(
             address(this),
             recipient,
-            amountToRelease,
-            nullifier
+            amount,
+            nullifierHash
         );
         if (!released) {
             revert TransferFailed();
@@ -272,10 +239,4 @@ contract zkERC20 is IzkERC20, Ownable, ReentrancyGuard {
         return commitmentTree.getNextIndex();
     }
 
-    function _extractAmountFromProof(uint256[] memory publicInputs) private pure returns (uint256 amount) {
-        if (publicInputs.length > 1) {
-            return publicInputs[1];
-        }
-        return 0;
-    }
 }
