@@ -6,7 +6,7 @@ import {PythStructs} from "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
 
 /// @title MockPyth
 /// @notice Mock Pyth contract for testing
-abstract contract MockPyth is IPyth {
+contract MockPyth is IPyth {
     mapping(bytes32 => PythStructs.Price) public prices;
     uint256 public updateFee = 1 wei;
 
@@ -70,5 +70,13 @@ abstract contract MockPyth is IPyth {
         uint64
     ) external payable override returns (PythStructs.PriceFeed[] memory) {
         revert("Not implemented");
+    }
+
+    function getPrice(bytes32 id) external view override returns (PythStructs.Price memory price) {
+        return prices[id];
+    }
+
+    function getEmaPrice(bytes32 id) external view override returns (PythStructs.Price memory price) {
+        return prices[id];
     }
 }
