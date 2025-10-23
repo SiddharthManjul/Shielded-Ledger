@@ -11,5 +11,8 @@
     "snapshot": "forge snapshot",
     "fmt": "forge fmt",
     "fmt:check": "forge fmt --check"
+  },
+  "dependencies": {
+    "@pythnetwork/pyth-sdk-solidity": "^4.2.0"
   }
 }
