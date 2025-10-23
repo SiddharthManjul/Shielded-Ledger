@@ -55,3 +55,11 @@ coverage/
 *.tsbuildinfo
 
 lib
+
+pot16_0000.ptau
+pot16_0001.ptau
+pot16_final.ptau
+
+deposit_verification_key.json
+transfer_verification_key.json
+withdraw_verification_key.json
