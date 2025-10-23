@@ -25,7 +25,6 @@ contract zkERC20 is IzkERC20, Ownable, ReentrancyGuard {
     mapping(bytes32 => uint256) public commitmentIndex;
 
     string public name;
-
     string public symbol;
 
     uint256 public immutable DENOMINATION;
