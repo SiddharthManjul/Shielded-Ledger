@@ -17,4 +17,8 @@ echo "Transfer.circom"
 circom src/transfer.circom --r1cs --wasm --sym -o build/
 echo ""
 
+echo "Withdraw.circom"
+circom src/withdraw.circom --r1cs --wasm --sym -o build/
+echo ""
+
 echo "Compilation complete!"
