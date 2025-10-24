@@ -3,11 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { useRouter } from 'next/navigation';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { parseUnits, formatUnits } from 'viem';
+import { CheckCircle, Coins, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Navigation } from '@/components/navigation';
+import { GamingCard } from '@/components/ui/gaming-card';
 import { abis } from '@/lib/contracts';
 import { contractAddresses } from '@/lib/config';
-import Link from 'next/link';
 
 export default function MintPage() {
   const { address, isConnected } = useAccount();
@@ -124,145 +129,277 @@ export default function MintPage() {
     tokenDecimals !== undefined &&
     parseUnits(amount, tokenDecimals as number) > (allowance as bigint);
 
+  // Calculate progress percentage
+  const getProgressPercentage = () => {
+    switch (step) {
+      case 'input': return 25;
+      case 'approve': return 50;
+      case 'mint': return 75;
+      case 'success': return 100;
+      default: return 0;
+    }
+  };
+
+  const steps = [
+    { id: 'input', title: 'Enter Details', description: 'Input token and amount' },
+    { id: 'approve', title: 'Approve Tokens', description: 'Approve collateral spending' },
+    { id: 'mint', title: 'Mint Tokens', description: 'Create confidential tokens' },
+    { id: 'success', title: 'Complete', description: 'Minting successful' },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="container mx-auto px-4 py-8">
+        {/* Navigation */}
+        <Navigation />
+
         {/* Header */}
-        <header className="flex justify-between items-center mb-12">
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
+        <div className="max-w-4xl mx-auto mb-12 text-center">
+          <Badge className="bg-yellow-accent/10 text-yellow-accent border-yellow-accent/30 mb-4">
+            <Coins className="w-4 h-4 mr-2" />
+            Confidential Minting
+          </Badge>
+          <h1 className="text-4xl font-bold mb-4">
+            <span className="text-yellow-accent">Mint</span> Confidential Tokens
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Deposit ERC20 tokens as collateral to mint confidential tokens with 1:1 ratio
+          </p>
+        </div>
+
+        {/* Progress Steps */}
+        <div className="max-w-4xl mx-auto mb-8">
+          <GamingCard className="p-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-white">Minting Progress</h3>
+                <span className="text-sm text-muted-foreground">{getProgressPercentage()}% Complete</span>
+              </div>
+              <Progress value={getProgressPercentage()} className="w-full" />
+              <div className="grid grid-cols-4 gap-4 mt-6">
+                {steps.map((stepItem, index) => (
+                  <div
+                    key={stepItem.id}
+                    className={`text-center ${
+                      index <= steps.findIndex(s => s.id === step) ? 'opacity-100' : 'opacity-50'
+                    }`}
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center text-sm font-bold ${
+                        index < steps.findIndex(s => s.id === step)
+                          ? 'bg-yellow-accent text-black'
+                          : index === steps.findIndex(s => s.id === step)
+                          ? 'bg-yellow-accent text-black'
+                          : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {index < steps.findIndex(s => s.id === step) ? (
+                        <CheckCircle className="w-4 h-4" />
+                      ) : (
+                        index + 1
+                      )}
+                    </div>
+                    <div className="text-xs font-medium">{stepItem.title}</div>
+                    <div className="text-xs text-muted-foreground">{stepItem.description}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <span className="text-2xl font-bold">Shielded Ledger</span>
-          </Link>
-          <div className="flex items-center space-x-4">
-            <Link
-              href="/launch"
-              className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-all"
-            >
-              Token Launch
-            </Link>
-            <ConnectButton />
-          </div>
-        </header>
+          </GamingCard>
+        </div>
 
         {/* Main Content */}
         <div className="max-w-2xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">Mint Confidential Tokens</h1>
-            <p className="text-gray-400">Deposit ERC20 tokens as collateral to mint confidential tokens with 1:1 ratio</p>
-          </div>
-
           {step === 'success' ? (
-            <div className="bg-white/5 backdrop-blur-lg rounded-xl p-8 border border-green-500/50">
-              <div className="text-center space-y-4">
+            <GamingCard variant="action" glowColor="green">
+              <div className="text-center space-y-6 p-6">
                 <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
-                  <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+                  <CheckCircle className="w-8 h-8 text-green-400" />
                 </div>
-                <h2 className="text-2xl font-bold">Minting Successful!</h2>
-                <p className="text-gray-400">Your confidential tokens have been minted</p>
-                <div className="pt-4">
-                  <button
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-2">Minting Successful!</h2>
+                  <p className="text-muted-foreground">Your confidential tokens have been minted and are ready for private transactions</p>
+                </div>
+                
+                {/* Transaction Details */}
+                {hash && (
+                  <GamingCard className="bg-muted/20 p-4">
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Transaction:</span>
+                        <span className="font-mono text-yellow-accent">{hash.slice(0, 10)}...{hash.slice(-8)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Amount Minted:</span>
+                        <span className="text-white">{amount} {tokenSymbol as string}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Status:</span>
+                        <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Confirmed
+                        </Badge>
+                      </div>
+                    </div>
+                  </GamingCard>
+                )}
+
+                <div className="flex gap-4">
+                  <Button
                     onClick={() => {
                       setStep('input');
                       setAmount('');
+                      setCollateralToken('0x');
                     }}
-                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all"
+                    className="flex-1 glow-button bg-yellow-accent text-black hover:bg-yellow-accent/90"
                   >
-                    Mint More
-                  </button>
+                    Mint More Tokens
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-border hover:bg-hover-bg"
+                    onClick={() => router.push('/launch')}
+                  >
+                    Launch New Token
+                  </Button>
                 </div>
               </div>
-            </div>
+            </GamingCard>
           ) : (
-            <div className="bg-white/5 backdrop-blur-lg rounded-xl p-8 border border-white/10 space-y-6">
-              {/* Collateral Token Input */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Collateral Token Address</label>
-                <input
+            <GamingCard className="p-8 space-y-6">
+              {/* Token Selection */}
+              <div className="space-y-3">
+                <label className="block text-sm font-semibold text-white">Collateral Token Address</label>
+                <Input
                   type="text"
                   value={collateralToken}
                   onChange={(e) => setCollateralToken(e.target.value as `0x${string}`)}
-                  placeholder="0x..."
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 transition-all"
+                  placeholder="0x... (Enter ERC20 token address)"
+                  className="bg-input border-border focus:border-yellow-accent"
                 />
                 {tokenName && (
-                  <p className="text-sm text-gray-400 mt-2">
-                    Token: {tokenName as string} ({tokenSymbol as string})
-                  </p>
+                  <div className="flex items-center gap-2 p-3 bg-yellow-accent/10 border border-yellow-accent/30 rounded-lg">
+                    <CheckCircle className="w-4 h-4 text-yellow-accent" />
+                    <span className="text-sm">
+                      Token: <strong>{tokenName as string}</strong> ({tokenSymbol as string})
+                    </span>
+                  </div>
                 )}
               </div>
 
               {/* Amount Input */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Amount</label>
+              <div className="space-y-3">
+                <label className="block text-sm font-semibold text-white">Amount to Mint</label>
                 <div className="relative">
-                  <input
+                  <Input
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="0.0"
                     step="any"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 transition-all"
+                    className="bg-input border-border focus:border-yellow-accent pr-20"
                   />
                   {tokenSymbol && (
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">
                       {tokenSymbol as string}
-                    </span>
+                    </div>
                   )}
                 </div>
-                {balance !== undefined && tokenDecimals !== undefined && (
-                  <p className="text-sm text-gray-400 mt-2">
-                    Balance: {formatUnits(balance as bigint, tokenDecimals as number)} {tokenSymbol as string}
-                  </p>
-                )}
+                
+                <div className="flex items-center justify-between text-sm">
+                  {balance !== undefined && tokenDecimals !== undefined && (
+                    <span className="text-muted-foreground">
+                      Balance: {formatUnits(balance as bigint, tokenDecimals as number)} {tokenSymbol as string}
+                    </span>
+                  )}
+                  {balance !== undefined && tokenDecimals !== undefined && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-1 text-yellow-accent hover:text-yellow-accent/80"
+                      onClick={() => setAmount(formatUnits(balance as bigint, tokenDecimals as number))}
+                    >
+                      MAX
+                    </Button>
+                  )}
+                </div>
               </div>
 
-              {/* Info Box */}
-              <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
-                <p className="text-sm text-purple-300">
-                  <strong>Note:</strong> Your collateral will be locked in the CollateralManager contract.
-                  You will receive confidential tokens that can be transferred privately using zero-knowledge proofs.
-                </p>
+              {/* Info Alert */}
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                <div className="flex gap-3">
+                  <AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-blue-300">
+                    <strong>How it works:</strong> Your collateral will be securely locked in the CollateralManager contract.
+                    You'll receive confidential tokens that can be transferred privately using zero-knowledge proofs.
+                  </div>
+                </div>
               </div>
 
               {/* Action Buttons */}
               <div className="space-y-3">
                 {needsApproval && (
-                  <button
+                  <Button
                     onClick={handleApprove}
                     disabled={isPending || isConfirming || !collateralToken || !amount}
-                    className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full glow-button bg-yellow-accent text-black hover:bg-yellow-accent/90 font-semibold h-12"
                   >
-                    {isPending || (isConfirming && step === 'approve')
-                      ? 'Approving...'
-                      : `Approve ${tokenSymbol || 'Token'}`}
-                  </button>
+                    {isPending || (isConfirming && step === 'approve') ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Approving...
+                      </>
+                    ) : (
+                      <>
+                        Approve {tokenSymbol || 'Token'}
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
                 )}
 
-                <button
+                <Button
                   onClick={handleMint}
                   disabled={isPending || isConfirming || !collateralToken || !amount || needsApproval}
-                  className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full glow-button bg-yellow-accent text-black hover:bg-yellow-accent/90 font-semibold h-12"
                 >
-                  {isPending || (isConfirming && step === 'mint')
-                    ? 'Minting...'
-                    : 'Mint Confidential Tokens'}
-                </button>
+                  {isPending || (isConfirming && step === 'mint') ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Minting...
+                    </>
+                  ) : (
+                    <>
+                      <Coins className="w-4 h-4 mr-2" />
+                      Mint Confidential Tokens
+                    </>
+                  )}
+                </Button>
               </div>
 
               {/* Transaction Status */}
-              {hash && (
-                <div className="bg-white/5 rounded-lg p-4 text-sm">
-                  <p className="text-gray-400">Transaction: {hash.slice(0, 10)}...{hash.slice(-8)}</p>
-                  {isConfirming && <p className="text-yellow-400 mt-1">Waiting for confirmation...</p>}
-                </div>
+              {hash && step !== 'success' && (
+                <GamingCard className="bg-muted/20 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-yellow-accent/20 rounded-full flex items-center justify-center">
+                      {isConfirming ? (
+                        <Loader2 className="w-4 h-4 text-yellow-accent animate-spin" />
+                      ) : (
+                        <CheckCircle className="w-4 h-4 text-yellow-accent" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">
+                        Transaction {isConfirming ? 'confirming' : 'submitted'}
+                      </p>
+                      <p className="text-xs text-muted-foreground font-mono">
+                        {hash.slice(0, 10)}...{hash.slice(-8)}
+                      </p>
+                    </div>
+                  </div>
+                </GamingCard>
               )}
-            </div>
+            </GamingCard>
           )}
         </div>
       </div>
