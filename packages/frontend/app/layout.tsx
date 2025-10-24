@@ -1,16 +1,24 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { JetBrains_Mono, Bruno_Ace_SC, Manrope } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
 
-const inter = Inter({
-  variable: "--font-inter",
+// Using Manrope as it has a similar calm, modern feel to Vend Sans
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
   display: "swap",
 });
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const brunoAceSC = Bruno_Ace_SC({
+  variable: "--font-bruno-ace-sc",
+  weight: "400",
   subsets: ["latin"],
   display: "swap",
 });
@@ -28,7 +36,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${inter.variable} ${jetbrainsMono.variable} antialiased font-sans dark`}
+        className={`${manrope.variable} ${jetbrainsMono.variable} ${brunoAceSC.variable} antialiased font-sans dark`}
       >
         <Providers>
           {children}
