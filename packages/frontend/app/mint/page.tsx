@@ -159,7 +159,7 @@ export default function MintPage() {
             <Coins className="w-4 h-4 mr-2" />
             Confidential Minting
           </Badge>
-          <h1 className="text-4xl font-bold mb-4">
+          <h1 className="text-4xl font-display font-bold mb-4">
             <span className="text-yellow-accent">Mint</span> Confidential Tokens
           </h1>
           <p className="text-muted-foreground text-lg">
@@ -173,7 +173,7 @@ export default function MintPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-white">Minting Progress</h3>
-                <span className="text-sm text-muted-foreground">{getProgressPercentage()}% Complete</span>
+                <span className="text-sm text-muted-foreground"><span className="font-numbers">{getProgressPercentage()}%</span> Complete</span>
               </div>
               <Progress value={getProgressPercentage()} className="w-full" />
               <div className="grid grid-cols-4 gap-4 mt-6">
@@ -185,7 +185,7 @@ export default function MintPage() {
                     }`}
                   >
                     <div
-                      className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center text-sm font-bold ${
+                      className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center text-sm font-numbers font-bold ${
                         index < steps.findIndex(s => s.id === step)
                           ? 'bg-yellow-accent text-black'
                           : index === steps.findIndex(s => s.id === step)
@@ -196,7 +196,7 @@ export default function MintPage() {
                       {index < steps.findIndex(s => s.id === step) ? (
                         <CheckCircle className="w-4 h-4" />
                       ) : (
-                        index + 1
+                        <span className="font-numbers">{index + 1}</span>
                       )}
                     </div>
                     <div className="text-xs font-medium">{stepItem.title}</div>
@@ -231,7 +231,7 @@ export default function MintPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Amount Minted:</span>
-                        <span className="text-white">{amount} {tokenSymbol as string}</span>
+                        <span className="text-white"><span className="font-numbers">{amount}</span> {tokenSymbol as string}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Status:</span>
@@ -251,13 +251,13 @@ export default function MintPage() {
                       setAmount('');
                       setCollateralToken('0x');
                     }}
-                    className="flex-1 glow-button bg-yellow-accent text-black hover:bg-yellow-accent/90"
+                    className="flex-1"
                   >
                     Mint More Tokens
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex-1 border-border hover:bg-hover-bg"
+                    className="flex-1"
                     onClick={() => router.push('/launch')}
                   >
                     Launch New Token
@@ -309,7 +309,7 @@ export default function MintPage() {
                 <div className="flex items-center justify-between text-sm">
                   {balance !== undefined && tokenDecimals !== undefined && (
                     <span className="text-muted-foreground">
-                      Balance: {formatUnits(balance as bigint, tokenDecimals as number)} {tokenSymbol as string}
+                      Balance: <span className="font-numbers">{formatUnits(balance as bigint, tokenDecimals as number)}</span> {tokenSymbol as string}
                     </span>
                   )}
                   {balance !== undefined && tokenDecimals !== undefined && (
@@ -342,7 +342,7 @@ export default function MintPage() {
                   <Button
                     onClick={handleApprove}
                     disabled={isPending || isConfirming || !collateralToken || !amount}
-                    className="w-full glow-button bg-yellow-accent text-black hover:bg-yellow-accent/90 font-semibold h-12"
+                    className="w-full h-12"
                   >
                     {isPending || (isConfirming && step === 'approve') ? (
                       <>
@@ -361,7 +361,7 @@ export default function MintPage() {
                 <Button
                   onClick={handleMint}
                   disabled={isPending || isConfirming || !collateralToken || !amount || needsApproval}
-                  className="w-full glow-button bg-yellow-accent text-black hover:bg-yellow-accent/90 font-semibold h-12"
+                  className="w-full h-12"
                 >
                   {isPending || (isConfirming && step === 'mint') ? (
                     <>

@@ -103,7 +103,7 @@ export default function LaunchPage() {
             <Rocket className="w-4 h-4 mr-2" />
             Token Launch Platform
           </Badge>
-          <h1 className="text-4xl font-bold mb-4">
+          <h1 className="text-4xl font-display font-bold mb-4">
             <span className="text-blue-400">Launch</span> Confidential Token
           </h1>
           <p className="text-muted-foreground text-lg">
@@ -171,13 +171,14 @@ export default function LaunchPage() {
                       setHasCollateral(false);
                       setCollateralToken('0x');
                     }}
-                    className="flex-1 glow-button bg-blue-500 text-white hover:bg-blue-600"
+                    variant="info"
+                    className="flex-1"
                   >
                     Launch Another Token
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex-1 border-border hover:bg-hover-bg"
+                    className="flex-1"
                     onClick={() => router.push('/mint')}
                   >
                     Go to Minting
@@ -272,7 +273,7 @@ export default function LaunchPage() {
                       <Button
                         variant={hasCollateral ? "default" : "outline"}
                         onClick={() => setHasCollateral(!hasCollateral)}
-                        className={hasCollateral ? "bg-yellow-accent text-black" : ""}
+                        className=""
                       >
                         {hasCollateral ? 'Enabled' : 'Disabled'}
                       </Button>
@@ -345,7 +346,8 @@ export default function LaunchPage() {
                   <Button
                     onClick={handleLaunch}
                     disabled={!canLaunch || isPending || isConfirming}
-                    className="w-full h-12 glow-button bg-blue-500 text-white hover:bg-blue-600 font-semibold"
+                    variant="info"
+                    className="w-full h-12"
                   >
                     {isPending || isConfirming ? (
                       <>

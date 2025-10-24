@@ -1,30 +1,32 @@
-'use client';
+"use client";
 
-import { useAccount, useSignMessage } from 'wagmi';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { Shield, Coins, Rocket, Lock, Zap, Users, TrendingUp } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Navigation } from '@/components/navigation';
-import { GamingCard, CountdownBox, StatsCard } from '@/components/ui/gaming-card';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { Navigation } from "@/components/navigation";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { GamingCard, StatsCard } from "@/components/ui/gaming-card";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import {
+  Coins,
+  Lock,
+  Rocket,
+  Shield,
+  TrendingUp,
+  Users,
+  Zap,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useAccount, useSignMessage } from "wagmi";
 
 export default function Home() {
   const { address, isConnected } = useAccount();
   const { signMessage } = useSignMessage();
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [timeLeft, setTimeLeft] = useState({
-    days: 7,
-    hours: 22,
-    minutes: 15,
-    seconds: 30
-  });
 
   useEffect(() => {
     // Check if user is already authenticated
-    const authStatus = localStorage.getItem('shielded-ledger-auth');
+    const authStatus = localStorage.getItem("shielded-ledger-auth");
     if (authStatus === address) {
       setIsAuthenticated(true);
     }
@@ -33,93 +35,74 @@ export default function Home() {
   useEffect(() => {
     // Auto-redirect if authenticated
     if (isAuthenticated && isConnected) {
-      router.push('/mint');
+      router.push("/mint");
     }
   }, [isAuthenticated, isConnected, router]);
-
-  useEffect(() => {
-    // Countdown timer
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 };
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
-        } else if (prev.hours > 0) {
-          return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        } else if (prev.days > 0) {
-          return { ...prev, days: prev.days - 1, hours: 23, minutes: 59, seconds: 59 };
-        }
-        return prev;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
 
   const handleSignMessage = async () => {
     if (!address) return;
 
     try {
       await signMessage(
-        { message: `Sign this message to authenticate with Shielded Ledger.\n\nWallet: ${address}\nTimestamp: ${Date.now()}` },
+        {
+          message: `Sign this message to authenticate with Shielded Ledger.\n\nWallet: ${address}\nTimestamp: ${Date.now()}`,
+        },
         {
           onSuccess: () => {
-            localStorage.setItem('shielded-ledger-auth', address);
+            localStorage.setItem("shielded-ledger-auth", address);
             setIsAuthenticated(true);
-            router.push('/mint');
+            router.push("/mint");
           },
         }
       );
     } catch (error) {
-      console.error('Error signing message:', error);
+      console.error("Error signing message:", error);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="container mx-auto px-4 py-8">
+    <div className="bg-background min-h-screen text-foreground">
+      <div className="mx-auto px-4 py-8 container">
         {/* Navigation */}
         <Navigation />
 
         {/* Hero Section */}
-        <div className="max-w-6xl mx-auto text-center space-y-12">
+        <div className="space-y-12 mx-auto max-w-6xl text-center">
           <div className="space-y-6">
-            <Badge className="bg-yellow-accent/10 text-yellow-accent border-yellow-accent/30 px-4 py-2 text-sm font-medium">
+            <Badge className="bg-yellow-accent/10 px-4 py-2 border-yellow-accent/30 font-medium text-yellow-accent text-sm">
               🚀 Next-Gen Privacy Protocol
             </Badge>
-            
-            <h1 className="text-6xl md:text-7xl font-bold">
-              <span className="text-glow text-yellow-accent">SHIELDED</span>
+
+            <h1 className="font-display font-bold text-6xl md:text-7xl">
+              <span className="font-display-glow text-yellow-accent">
+                SHIELDED
+              </span>
               <br />
               <span className="text-white">TOKEN LAUNCHPAD</span>
             </h1>
-            
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Launch entirely new confidential ERC20 tokens or mint confidential tokens backed 1:1 by existing ERC20 assets using zero-knowledge proofs.
-            </p>
-          </div>
 
-          {/* Countdown */}
-          <div className="flex justify-center">
-            <CountdownBox 
-              timeLeft={timeLeft}
-              label="🎯 Beta Launch Countdown"
-            />
+            <p className="mx-auto max-w-3xl text-muted-foreground text-xl leading-relaxed">
+              Launch entirely new confidential ERC20 tokens or mint confidential
+              tokens backed 1:1 by existing ERC20 assets using zero-knowledge
+              proofs.
+            </p>
           </div>
 
           {/* CTA Section */}
           <div className="space-y-6">
             {!isConnected ? (
               <div className="space-y-4">
-                <p className="text-muted-foreground">Connect your wallet to get started</p>
+                <p className="text-muted-foreground">
+                  Connect your wallet to get started
+                </p>
                 <ConnectButton.Custom>
                   {({ openConnectModal }) => (
                     <Button
                       onClick={openConnectModal}
-                      className="glow-button bg-yellow-accent text-black hover:bg-yellow-accent/90 text-lg px-12 py-6 h-auto font-bold"
+                      size="xl"
+                      className="text-white corner-cut-lg holographic"
                     >
-                      <Zap className="w-5 h-5 mr-2" />
+                      <Zap className="mr-2 w-5 h-5" />
                       CONNECT WALLET
                     </Button>
                   )}
@@ -127,26 +110,31 @@ export default function Home() {
               </div>
             ) : !isAuthenticated ? (
               <div className="space-y-4">
-                <p className="text-muted-foreground">Sign message to authenticate</p>
+                <p className="text-muted-foreground">
+                  Sign message to authenticate
+                </p>
                 <Button
                   onClick={handleSignMessage}
-                  className="glow-button bg-yellow-accent text-black hover:bg-yellow-accent/90 text-lg px-12 py-6 h-auto font-bold"
+                  size="xl"
+                  className="corner-cut-lg pulse-glow"
                 >
-                  <Shield className="w-5 h-5 mr-2" />
+                  <Shield className="mr-2 w-5 h-5" />
                   SIGN & ENTER APP
                 </Button>
               </div>
             ) : (
               <div className="space-y-4">
-                <p className="text-yellow-accent font-medium">✓ Authenticated - Redirecting...</p>
+                <p className="font-medium text-yellow-accent">
+                  ✓ Authenticated - Redirecting...
+                </p>
               </div>
             )}
           </div>
         </div>
 
         {/* Stats Section */}
-        <div className="max-w-6xl mx-auto mt-20">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="mx-auto mt-20 max-w-6xl">
+          <div className="gap-6 grid grid-cols-2 md:grid-cols-4">
             <StatsCard
               title="Total Value Locked"
               value="$2.4M"
@@ -179,13 +167,17 @@ export default function Home() {
         </div>
 
         {/* Features */}
-        <div className="max-w-6xl mx-auto mt-20">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-white mb-4">Choose Your Path</h2>
-            <p className="text-muted-foreground text-lg">Two powerful ways to leverage confidential tokens</p>
+        <div className="mx-auto mt-20 max-w-6xl">
+          <div className="mb-12 text-center">
+            <h2 className="mb-4 font-display font-bold text-white text-4xl">
+              Choose Your Path
+            </h2>
+            <p className="text-muted-foreground text-lg">
+              Two powerful ways to leverage confidential tokens
+            </p>
           </div>
-          
-          <div className="grid md:grid-cols-2 gap-8">
+
+          <div className="gap-8 grid md:grid-cols-2">
             <GamingCard
               variant="feature"
               glowColor="yellow"
@@ -193,20 +185,22 @@ export default function Home() {
               description="Deposit existing ERC20 tokens as collateral to mint confidential tokens with 1:1 backing. Perfect for private holdings and transactions."
               icon={<Coins className="w-6 h-6 text-yellow-accent" />}
               className="cursor-pointer"
-              onClick={() => router.push('/mint')}
+              onClick={() => router.push("/mint")}
             >
               <div className="space-y-4 mt-6">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Collateral Ratio</span>
-                  <span className="text-white font-medium">1:1</span>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">
+                    Collateral Ratio
+                  </span>
+                  <span className="font-medium text-white">1:1</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Privacy Level</span>
-                  <span className="text-yellow-accent font-medium">100% Shielded</span>
+                  <span className="font-medium text-yellow-accent">
+                    100% Shielded
+                  </span>
                 </div>
-                <Button className="w-full mt-4 bg-yellow-accent text-black hover:bg-yellow-accent/90 font-semibold">
-                  Start Minting →
-                </Button>
+                <Button className="mt-4 w-full">Start Minting →</Button>
               </div>
             </GamingCard>
 
@@ -217,18 +211,18 @@ export default function Home() {
               description="Create entirely new confidential ERC20 tokens with built-in privacy features. Ideal for governance, rewards, and private ecosystems."
               icon={<Rocket className="w-6 h-6 text-blue-400" />}
               className="cursor-pointer"
-              onClick={() => router.push('/launch')}
+              onClick={() => router.push("/launch")}
             >
               <div className="space-y-4 mt-6">
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Launch Time</span>
-                  <span className="text-white font-medium">~5 minutes</span>
+                  <span className="font-medium text-white">~5 minutes</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Gas Efficiency</span>
-                  <span className="text-blue-400 font-medium">Optimized</span>
+                  <span className="font-medium text-blue-400">Optimized</span>
                 </div>
-                <Button className="w-full mt-4 bg-blue-500 text-white hover:bg-blue-600 font-semibold">
+                <Button variant="info" className="mt-4 w-full">
                   Launch Token →
                 </Button>
               </div>
@@ -237,37 +231,43 @@ export default function Home() {
         </div>
 
         {/* How It Works */}
-        <div className="max-w-4xl mx-auto mt-24">
+        <div className="mx-auto mt-24 max-w-4xl">
           <GamingCard title="How It Works" className="p-8">
             <div className="space-y-6">
               {[
                 {
                   step: 1,
                   title: "Connect Wallet",
-                  description: "Use any Ethereum wallet to get started with Shielded Ledger"
+                  description:
+                    "Use any Ethereum wallet to get started with Shielded Ledger",
                 },
                 {
                   step: 2,
                   title: "Sign Authentication",
-                  description: "Verify ownership of your wallet with a simple signature"
+                  description:
+                    "Verify ownership of your wallet with a simple signature",
                 },
                 {
                   step: 3,
                   title: "Choose Your Path",
-                  description: "Mint confidential tokens or launch a completely new token"
+                  description:
+                    "Mint confidential tokens or launch a completely new token",
                 },
                 {
                   step: 4,
                   title: "Transact Privately",
-                  description: "All transfers are shielded using zero-knowledge proofs"
-                }
+                  description:
+                    "All transfers are shielded using zero-knowledge proofs",
+                },
               ].map((item) => (
                 <div key={item.step} className="flex items-start space-x-4">
-                  <div className="flex-shrink-0 w-8 h-8 bg-yellow-accent text-black rounded-full flex items-center justify-center text-sm font-bold">
+                  <div className="flex flex-shrink-0 justify-center items-center bg-yellow-accent rounded-full w-8 h-8 font-numbers font-bold text-black text-sm">
                     {item.step}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-white mb-1">{item.title}</h3>
+                    <h3 className="mb-1 font-semibold text-white">
+                      {item.title}
+                    </h3>
                     <p className="text-muted-foreground">{item.description}</p>
                   </div>
                 </div>
