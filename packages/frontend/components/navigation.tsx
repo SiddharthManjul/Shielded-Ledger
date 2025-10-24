@@ -27,8 +27,8 @@ export function Navigation({ className }: NavigationProps) {
           <Shield className="w-7 h-7 text-black" />
         </div>
         <div>
-          <span className="text-2xl font-bold text-yellow-accent">Shielded</span>
-          <span className="text-2xl font-bold text-white ml-1">Ledger</span>
+          <span className="text-2xl font-display font-bold text-yellow-accent">Shielded</span>
+          <span className="text-2xl font-display font-bold text-white ml-1">Ledger</span>
         </div>
       </Link>
 
@@ -43,10 +43,8 @@ export function Navigation({ className }: NavigationProps) {
               <Button
                 variant={isActive ? "default" : "ghost"}
                 className={cn(
-                  "flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300",
-                  isActive 
-                    ? "bg-yellow-accent text-black glow-button" 
-                    : "hover:bg-hover-bg text-white hover:text-yellow-accent"
+                  "flex items-center space-x-2 transition-all duration-300",
+                  isActive && "corner-cut"
                 )}
               >
                 <Icon className="w-4 h-4" />
@@ -87,7 +85,7 @@ export function Navigation({ className }: NavigationProps) {
                     return (
                       <Button
                         onClick={openConnectModal}
-                        className="glow-button bg-yellow-accent text-black hover:bg-yellow-accent/90 font-semibold px-6"
+                        className=""
                       >
                         Connect Wallet
                       </Button>
@@ -99,7 +97,7 @@ export function Navigation({ className }: NavigationProps) {
                       <Button
                         onClick={openChainModal}
                         variant="destructive"
-                        className="font-semibold px-6"
+                        className=""
                       >
                         Wrong network
                       </Button>
@@ -111,7 +109,7 @@ export function Navigation({ className }: NavigationProps) {
                       <Button
                         onClick={openChainModal}
                         variant="outline"
-                        className="bg-card border-border hover:bg-hover-bg"
+                        className="corner-cut-lg"
                       >
                         {chain.hasIcon && (
                           <div
@@ -138,7 +136,7 @@ export function Navigation({ className }: NavigationProps) {
 
                       <Button
                         onClick={openAccountModal}
-                        className="glow-button bg-yellow-accent text-black hover:bg-yellow-accent/90 font-semibold"
+                        className=""
                       >
                         {account.displayName}
                         {account.displayBalance
