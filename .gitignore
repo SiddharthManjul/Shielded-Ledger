@@ -54,7 +54,7 @@ coverage/
 .cache/
 *.tsbuildinfo
 
-lib
+packages/contracts/lib
 
 pot16_0000.ptau
 pot16_0001.ptau
