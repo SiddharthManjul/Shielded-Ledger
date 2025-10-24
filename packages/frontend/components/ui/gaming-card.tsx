@@ -103,7 +103,7 @@ export function CountdownBox({ timeLeft, label = "Sale ends in:" }: CountdownBox
         {Object.entries(timeLeft).map(([unit, value], index) => (
           <React.Fragment key={unit}>
             <div className="text-center">
-              <div className="text-2xl md:text-3xl font-bold text-white">
+              <div className="text-2xl md:text-3xl font-numbers font-bold text-white">
                 {value.toString().padStart(2, '0')}
               </div>
               <div className="text-xs text-muted-foreground capitalize">{unit}</div>
@@ -144,10 +144,10 @@ export function StatsCard({ title, value, change, changeType = 'neutral', icon }
           </div>
         )}
         <div>
-          <div className="text-2xl font-bold text-white">{value}</div>
+          <div className="text-2xl font-numbers font-bold text-white">{value}</div>
           <div className="text-sm text-muted-foreground">{title}</div>
           {change && (
-            <div className={cn("text-xs mt-1", changeColors[changeType])}>
+            <div className={cn("text-xs mt-1 font-numbers", changeColors[changeType])}>
               {change}
             </div>
           )}
