@@ -7,19 +7,23 @@
     "packages/*"
   ],
   "scripts": {
-    "frontend:dev": "npm run dev --workspace=frontend",
-    "frontend:build": "npm run build --workspace=frontend",
-    "frontend:start": "npm run start --workspace=frontend",
+    "install:all": "pnpm install",
+    "frontend:dev": "pnpm --filter @diffipay/frontend dev",
+    "frontend:build": "pnpm --filter @diffipay/frontend build",
+    "frontend:start": "pnpm --filter @diffipay/frontend start",
+    "frontend:lint": "pnpm --filter @diffipay/frontend lint",
     "contracts:test": "cd packages/contracts && forge test",
     "contracts:build": "cd packages/contracts && forge build",
-    "circuits:compile": "cd packages/circuits && npm run compile",
-    "circuits:test": "cd packages/circuits && npm run test",
-    "install:all": "npm install && npm run install:circuits",
-    "install:circuits": "cd packages/circuits && npm install"
+    "circuits:compile": "pnpm --filter @diffipay/circuits compile",
+    "circuits:test": "pnpm --filter @diffipay/circuits test",
+    "circuits:build": "pnpm --filter @diffipay/circuits build:contracts",
+    "dev": "pnpm frontend:dev",
+    "build": "pnpm frontend:build && pnpm circuits:compile && pnpm contracts:build",
+    "test": "pnpm circuits:test && pnpm contracts:test"
   },
   "devDependencies": {},
   "engines": {
     "node": ">=18.0.0",
-    "npm": ">=9.0.0"
+    "pnpm": ">=8.0.0"
   }
 }
