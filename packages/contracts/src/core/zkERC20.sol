@@ -82,13 +82,16 @@ contract zkERC20 is IzkERC20, Ownable, ReentrancyGuard {
         }
 
         address underlyingToken = COLLATERAL_MANAGER.getUnderlyingToken(address(this));
-        require(IERC20(underlyingToken).transferFrom(msg.sender, address(this), amount), "Transfer failed");
+        require(underlyingToken != address(0), "zkToken not registered with CollateralManager");
+
+        uint256 allowance = IERC20(underlyingToken).allowance(msg.sender, address(this));
+        require(allowance >= amount, "Insufficient collateral token allowance");
+
+        require(IERC20(underlyingToken).transferFrom(msg.sender, address(this), amount), "Collateral transfer failed");
         IERC20(underlyingToken).approve(address(COLLATERAL_MANAGER), amount);
 
         bool locked = COLLATERAL_MANAGER.lockCollateral(address(this), amount, commitment);
-        if (!locked) {
-            revert TransferFailed();
-        }
+        require(locked, "CollateralManager lockCollateral failed");
 
         nullifiers[nullifierHash] = true;
 

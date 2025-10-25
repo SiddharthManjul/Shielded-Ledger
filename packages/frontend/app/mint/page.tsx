@@ -156,7 +156,7 @@ export default function MintPage() {
     address: collateralToken,
     abi: abis.MockERC20,
     functionName: "allowance",
-    args: [address as `0x${string}`, contractAddresses.CollateralManager],
+    args: [address as `0x${string}`, contractAddresses.zkERC20], // FIXED: Check allowance for zkERC20, not CollateralManager
     query: {
       enabled:
         isAuthenticated && !!address && collateralToken && collateralToken !== "0x" && collateralToken.length === 42,
@@ -186,11 +186,13 @@ export default function MintPage() {
     },
   });
 
-  const isOwner = address && collateralManagerOwner && address.toLowerCase() === collateralManagerOwner.toLowerCase();
+  const isOwner = address && collateralManagerOwner && address.toLowerCase() === (collateralManagerOwner as `0x${string}`).toLowerCase();
 
   // Type-safe variables
   const safeTokenName = typeof tokenName === 'string' ? tokenName : '';
   const safeTokenSymbol = typeof tokenSymbol === 'string' ? tokenSymbol : '';
+  // collateralManagerOwner comes from useReadContract and can be unknown; normalize to string for safe display
+  const safeCollateralManagerOwner = typeof collateralManagerOwner === 'string' ? collateralManagerOwner : '';
 
   const handleRegisterZkToken = async () => {
     if (!collateralToken || collateralToken === "0x" || collateralToken.length !== 42) {
@@ -219,11 +221,14 @@ export default function MintPage() {
 
     try {
       const amountInWei = parseUnits(amount, tokenDecimals as number);
+      console.log("Approving collateral token to zkERC20 contract...");
+      console.log("Amount:", amountInWei.toString());
+      console.log("Spender (zkERC20):", contractAddresses.zkERC20);
       writeContract({
         address: collateralToken,
         abi: abis.MockERC20,
         functionName: "approve",
-        args: [contractAddresses.CollateralManager, amountInWei],
+        args: [contractAddresses.zkERC20, amountInWei], // FIXED: Approve to zkERC20, not CollateralManager
       });
       setStep("approve");
     } catch (error) {
@@ -253,8 +258,20 @@ export default function MintPage() {
     try {
       const amountInWei = parseUnits(amount, tokenDecimals as number);
       console.log("amountInWei:", amountInWei);
+
+      // Check allowance before proceeding
+      console.log("Checking allowance for zkERC20...");
+      console.log("Allowance:", allowance?.toString());
+      console.log("Amount needed:", amountInWei.toString());
+
+      if (allowance === undefined || (allowance as bigint) < amountInWei) {
+        alert(`⚠️ Insufficient Allowance!\n\nCurrent allowance: ${allowance?.toString() || '0'}\nAmount needed: ${amountInWei.toString()}\n\nPlease approve the collateral token first by clicking "Approve ${safeTokenSymbol} Access"`);
+        return;
+      }
+
+      console.log("✅ Allowance check passed!");
       console.log("Generating ZK proof for deposit...");
-      
+
       // Generate ZK proof for the deposit
       const zkProof = await generateDepositProof(amountInWei);
       console.log("ZK proof generated:", zkProof);
@@ -271,9 +288,17 @@ export default function MintPage() {
       const commitmentHex = ("0x" + zkProof.commitment.toString(16).padStart(64, '0')) as `0x${string}`;
       const nullifierHex = ("0x" + zkProof.nullifier.toString(16).padStart(64, '0')) as `0x${string}`;
 
+      console.log("=== PROOF DEBUG INFO ===");
       console.log("Calling writeContract with zkERC20 deposit function");
       console.log("Using commitmentHex:", commitmentHex);
       console.log("Using nullifierHex:", nullifierHex);
+      console.log("Commitment hex length (with 0x):", commitmentHex.length);
+      console.log("Nullifier hex length (with 0x):", nullifierHex.length);
+      console.log("Proof A:", zkProof.a);
+      console.log("Proof B:", zkProof.b);
+      console.log("Proof C:", zkProof.c);
+      console.log("Amount in Wei:", amountInWei.toString());
+      console.log("========================");
 
       writeContract({
         address: contractAddresses.zkERC20,
@@ -294,21 +319,31 @@ export default function MintPage() {
           setStep("mint");
         },
         onError: (error) => {
-          console.error("Transaction failed:", error);
+          console.error("❌ Transaction failed:", error);
           console.error("Error details:", {
             message: error.message,
             cause: error.cause,
-            name: error.name
+            name: error.name,
+            stack: error.stack
           });
 
-          // Check if it's a revert error
-          if (error.message?.includes('execution reverted') || error.message?.includes('InvalidProof')) {
-            console.error("⚠️ Transaction reverted - This is likely due to:");
-            console.error("1. Mock ZK proofs not passing verifier validation");
-            console.error("2. Need to compile actual circuits and generate real proofs");
-            console.error("3. Or the collateral approval might have failed/expired");
-            alert("Transaction failed: The ZK proof verification failed. This is expected with mock proofs. You need to either:\n\n1. Compile the circuits and generate real proofs using snarkjs\n2. Deploy contracts with proof verification disabled for testing\n3. Check that collateral token approval is still valid");
+          // Try to extract the revert reason
+          let revertReason = "Unknown error";
+          if (error.message) {
+            if (error.message.includes('InvalidProof')) {
+              revertReason = "ZK Proof verification failed";
+            } else if (error.message.includes('not registered')) {
+              revertReason = "zkToken not registered with CollateralManager";
+            } else if (error.message.includes('Insufficient')) {
+              revertReason = "Insufficient token allowance or balance";
+            } else if (error.message.includes('Transfer failed')) {
+              revertReason = "Collateral token transfer failed";
+            } else if (error.message.includes('execution reverted')) {
+              revertReason = "Transaction reverted - check console for details";
+            }
           }
+
+          alert(`❌ Minting Failed!\n\nReason: ${revertReason}\n\nPlease check:\n1. You approved the collateral token to zkERC20 (not CollateralManager)\n2. zkERC20 is registered with CollateralManager\n3. You have sufficient balance\n4. The ZK proof is valid\n\nSee console for full error details.`);
         }
       });
     } catch (error) {
@@ -504,7 +539,7 @@ export default function MintPage() {
                         No Collateral Configuration
                       </p>
                       <p className="mt-1 text-yellow-300 text-sm">
-                        This token was launched without collateral backing. For non-collateral tokens, you'll need to:
+                        This token was launched without collateral backing. For non-collateral tokens, you&apos;ll need to:
                       </p>
                       <ul className="mt-2 space-y-1 text-yellow-300 text-sm list-disc list-inside">
                         <li>Manually enter a collateral token address below</li>
@@ -837,13 +872,13 @@ export default function MintPage() {
                             zkERC20 Token Not Registered
                           </p>
                           <p className="mt-1 text-yellow-300 text-sm mb-3">
-                            Before minting, the zkERC20 token must be registered with the CollateralManager.
+                            This token needs to be registered with the CollateralManager before minting.
                           </p>
-                          {collateralManagerOwner && (
+                          {safeCollateralManagerOwner ? (
                             <p className="text-yellow-300 text-xs mb-3">
-                              CollateralManager Owner: {collateralManagerOwner.slice(0, 6)}...{collateralManagerOwner.slice(-4)}
+                              CollateralManager Owner: {safeCollateralManagerOwner.slice(0, 6)}...{safeCollateralManagerOwner.slice(-4)}
                             </p>
-                          )}
+                          ) : null}
                           {isOwner ? (
                             <Button
                               onClick={handleRegisterZkToken}

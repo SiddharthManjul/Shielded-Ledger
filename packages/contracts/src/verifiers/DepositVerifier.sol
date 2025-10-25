@@ -59,7 +59,15 @@ contract DepositVerifier {
 
     uint16 constant pLastMem = 896;
 
-    function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[2] calldata _pubSignals) public view returns (bool) {
+    // Main verifyProof function that accepts dynamic array (matches interface)
+    function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[] calldata _pubSignals) public view returns (bool) {
+        require(_pubSignals.length == 2, "Invalid number of public signals");
+        uint[2] memory pubSignalsFixed = [_pubSignals[0], _pubSignals[1]];
+        return _verifyProof(_pA, _pB, _pC, pubSignalsFixed);
+    }
+
+    // Internal function with fixed-size array for assembly
+    function _verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[2] memory _pubSignals) internal view returns (bool) {
         assembly {
             function checkField(v) {
                 if iszero(lt(v, r)) {
@@ -102,10 +110,10 @@ contract DepositVerifier {
                 mstore(add(_pVk, 32), IC0y)
 
                 // Compute the linear combination vk_x
-                
-                g1_mulAccC(_pVk, IC1x, IC1y, calldataload(add(pubSignals, 0)))
-                
-                g1_mulAccC(_pVk, IC2x, IC2y, calldataload(add(pubSignals, 32)))
+
+                g1_mulAccC(_pVk, IC1x, IC1y, mload(pubSignals))
+
+                g1_mulAccC(_pVk, IC2x, IC2y, mload(add(pubSignals, 32)))
                 
 
                 // -A
@@ -159,11 +167,11 @@ contract DepositVerifier {
             mstore(0x40, add(pMem, pLastMem))
 
             // Validate that all evaluations ∈ F
-            
-            checkField(calldataload(add(_pubSignals, 0)))
-            
-            checkField(calldataload(add(_pubSignals, 32)))
-            
+
+            checkField(mload(_pubSignals))
+
+            checkField(mload(add(_pubSignals, 32)))
+
 
             // Validate all evaluations
             let isValid := checkPairing(_pA, _pB, _pC, _pubSignals, pMem)
