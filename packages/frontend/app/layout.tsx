@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { JetBrains_Mono, Bruno_Ace_SC, Manrope } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
+import { Background3D } from "@/components/Background3D";
 
 // Using Manrope as it has a similar calm, modern feel to Vend Sans
 const manrope = Manrope({
@@ -38,6 +39,7 @@ export default function RootLayout({
       <body
         className={`${manrope.variable} ${jetbrainsMono.variable} ${brunoAceSC.variable} antialiased font-sans dark`}
       >
+        <Background3D />
         <Providers>
           {children}
         </Providers>

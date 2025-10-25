@@ -21,9 +21,14 @@
     "build": "pnpm frontend:build && pnpm circuits:compile && pnpm contracts:build",
     "test": "pnpm circuits:test && pnpm contracts:test"
   },
-  "devDependencies": {},
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
+  },
+  "dependencies": {
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.180.0"
   }
 }

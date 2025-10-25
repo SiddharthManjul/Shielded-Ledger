@@ -55,7 +55,7 @@ export default function Home() {
   };
 
   return (
-    <div className="bg-background min-h-screen text-foreground">
+    <div className="min-h-screen text-foreground">
       <div className="mx-auto px-4 py-8 container">
         {/* Navigation */}
         <Navigation />

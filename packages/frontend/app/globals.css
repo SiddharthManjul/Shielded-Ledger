@@ -131,11 +131,8 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
-    background-image: 
-      linear-gradient(rgba(64, 64, 64, 0.1) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(64, 64, 64, 0.1) 1px, transparent 1px);
-    background-size: 20px 20px;
+    @apply text-foreground;
+    background: rgba(10, 10, 10, 1);
   }
 }
 
