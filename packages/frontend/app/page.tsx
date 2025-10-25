@@ -32,12 +32,6 @@ export default function Home() {
     }
   }, [address]);
 
-  useEffect(() => {
-    // Auto-redirect if authenticated
-    if (isAuthenticated && isConnected) {
-      router.push("/mint");
-    }
-  }, [isAuthenticated, isConnected, router]);
 
   const handleSignMessage = async () => {
     if (!address) return;
@@ -69,7 +63,7 @@ export default function Home() {
         {/* Hero Section */}
         <div className="space-y-12 mx-auto max-w-6xl text-center">
           <div className="space-y-6">
-            <Badge className="bg-yellow-accent/10 px-4 py-2 border-yellow-accent/30 font-medium text-yellow-accent text-sm">
+            <Badge variant="gaming" className="px-4 py-2 font-medium text-sm">
               🚀 Next-Gen Privacy Protocol
             </Badge>
 
@@ -111,7 +105,7 @@ export default function Home() {
             ) : !isAuthenticated ? (
               <div className="space-y-4">
                 <p className="text-muted-foreground">
-                  Sign message to authenticate
+                  Sign message to authenticate for full access
                 </p>
                 <Button
                   onClick={handleSignMessage}
@@ -125,8 +119,27 @@ export default function Home() {
             ) : (
               <div className="space-y-4">
                 <p className="font-medium text-yellow-accent">
-                  ✓ Authenticated - Redirecting...
+                  ✓ Wallet Connected & Authenticated
                 </p>
+                <div className="flex justify-center gap-4">
+                  <Button
+                    onClick={() => router.push("/mint")}
+                    size="xl"
+                    className="corner-cut-lg"
+                  >
+                    <Coins className="mr-2 w-5 h-5" />
+                    MINT TOKENS
+                  </Button>
+                  <Button
+                    onClick={() => router.push("/launch")}
+                    size="xl"
+                    variant="info"
+                    className="corner-cut-lg"
+                  >
+                    <Rocket className="mr-2 w-5 h-5" />
+                    LAUNCH TOKEN
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -200,7 +213,7 @@ export default function Home() {
                     100% Shielded
                   </span>
                 </div>
-                <Button className="mt-4 w-full">Start Minting →</Button>
+                <Button className="mt-4 w-full corner-cut">Start Minting →</Button>
               </div>
             </GamingCard>
 
@@ -222,7 +235,7 @@ export default function Home() {
                   <span className="text-muted-foreground">Gas Efficiency</span>
                   <span className="font-medium text-blue-400">Optimized</span>
                 </div>
-                <Button variant="info" className="mt-4 w-full">
+                <Button variant="info" className="mt-4 w-full corner-cut">
                   Launch Token →
                 </Button>
               </div>
@@ -261,7 +274,7 @@ export default function Home() {
                 },
               ].map((item) => (
                 <div key={item.step} className="flex items-start space-x-4">
-                  <div className="flex flex-shrink-0 justify-center items-center bg-yellow-accent rounded-full w-8 h-8 font-numbers font-bold text-black text-sm">
+                  <div className="flex flex-shrink-0 justify-center items-center bg-yellow-accent w-8 h-8 font-numbers font-bold text-black text-sm corner-cut">
                     {item.step}
                   </div>
                   <div>
