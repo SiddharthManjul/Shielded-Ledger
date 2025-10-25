@@ -216,7 +216,7 @@
   }
   
   .countdown-box {
-    @apply backdrop-blur-sm rounded-lg p-4;
+    @apply backdrop-blur-sm p-4;
     background: rgba(0, 0, 0, 0.5);
     border: 1px solid rgba(204, 255, 0, 0.3);
     box-shadow: 
@@ -413,6 +413,35 @@
     border: none;
     border-radius: 0 !important;
     box-shadow: inset 0 0 0 1px var(--border);
+  }
+
+  /* Enhanced input styling with gaming theme */
+  .corner-cut input,
+  input.corner-cut {
+    background: linear-gradient(135deg, rgba(42, 42, 42, 0.9), rgba(26, 26, 26, 0.9));
+    border: none !important;
+    clip-path: polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px);
+    box-shadow: 
+      inset 0 0 0 1px rgba(64, 64, 64, 0.8),
+      0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .corner-cut input:focus,
+  input.corner-cut:focus {
+    box-shadow: 
+      inset 0 0 0 2px rgba(204, 255, 0, 0.6),
+      0 0 15px rgba(204, 255, 0, 0.2),
+      0 4px 12px rgba(0, 0, 0, 0.4);
+    outline: none;
+  }
+
+  .corner-cut input:hover,
+  input.corner-cut:hover {
+    box-shadow: 
+      inset 0 0 0 1px rgba(204, 255, 0, 0.3),
+      0 2px 8px rgba(0, 0, 0, 0.3);
   }
 
   .corner-cut-lg {
