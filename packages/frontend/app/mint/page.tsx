@@ -163,9 +163,56 @@ export default function MintPage() {
     },
   });
 
+  // Check if zkERC20 is registered with CollateralManager
+  const { data: underlyingToken } = useReadContract({
+    address: contractAddresses.CollateralManager,
+    abi: abis.CollateralManager,
+    functionName: "getUnderlyingToken",
+    args: [contractAddresses.zkERC20],
+    query: {
+      enabled: isAuthenticated,
+    },
+  });
+
+  const isZkTokenRegistered = underlyingToken && underlyingToken !== "0x0000000000000000000000000000000000000000";
+
+  // Check who owns the CollateralManager
+  const { data: collateralManagerOwner } = useReadContract({
+    address: contractAddresses.CollateralManager,
+    abi: abis.CollateralManager,
+    functionName: "owner",
+    query: {
+      enabled: isAuthenticated,
+    },
+  });
+
+  const isOwner = address && collateralManagerOwner && address.toLowerCase() === collateralManagerOwner.toLowerCase();
+
   // Type-safe variables
   const safeTokenName = typeof tokenName === 'string' ? tokenName : '';
   const safeTokenSymbol = typeof tokenSymbol === 'string' ? tokenSymbol : '';
+
+  const handleRegisterZkToken = async () => {
+    if (!collateralToken || collateralToken === "0x" || collateralToken.length !== 42) {
+      alert("Please enter a valid collateral token address first");
+      return;
+    }
+
+    try {
+      console.log("Registering zkERC20 with CollateralManager...");
+      console.log("zkERC20:", contractAddresses.zkERC20);
+      console.log("Collateral Token:", collateralToken);
+
+      writeContract({
+        address: contractAddresses.CollateralManager,
+        abi: abis.CollateralManager,
+        functionName: "registerZkToken",
+        args: [contractAddresses.zkERC20, collateralToken],
+      });
+    } catch (error) {
+      console.error("Error registering zkToken:", error);
+    }
+  };
 
   const handleApprove = async () => {
     if (!collateralToken || !amount || !tokenDecimals) return;
@@ -779,6 +826,54 @@ export default function MintPage() {
                       </div>
                     ) : null}
                   </div>
+
+                  {/* zkToken Registration Warning */}
+                  {isAuthenticated && !isZkTokenRegistered && collateralToken && collateralToken !== "0x" && collateralToken.length === 42 && (
+                    <div className="bg-yellow-500/10 border border-yellow-500/30 corner-cut p-4 mb-6">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-medium text-yellow-400 text-sm mb-2">
+                            zkERC20 Token Not Registered
+                          </p>
+                          <p className="mt-1 text-yellow-300 text-sm mb-3">
+                            Before minting, the zkERC20 token must be registered with the CollateralManager.
+                          </p>
+                          {collateralManagerOwner && (
+                            <p className="text-yellow-300 text-xs mb-3">
+                              CollateralManager Owner: {collateralManagerOwner.slice(0, 6)}...{collateralManagerOwner.slice(-4)}
+                            </p>
+                          )}
+                          {isOwner ? (
+                            <Button
+                              onClick={handleRegisterZkToken}
+                              disabled={isPending || isConfirming}
+                              className="bg-yellow-500 hover:bg-yellow-600 text-black h-10"
+                              size="sm"
+                            >
+                              {isPending || isConfirming ? (
+                                <>
+                                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                                  Registering...
+                                </>
+                              ) : (
+                                <>
+                                  Register zkERC20 Token
+                                  <ArrowRight className="ml-2 w-4 h-4" />
+                                </>
+                              )}
+                            </Button>
+                          ) : (
+                            <div className="bg-red-500/10 border border-red-500/30 corner-cut p-3 mt-2">
+                              <p className="text-red-300 text-xs">
+                                ⚠️ You are not the owner of the CollateralManager contract. Please switch to the owner account or contact the owner to register this token.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Action Buttons */}
                   <div className="space-y-6 pt-6">
