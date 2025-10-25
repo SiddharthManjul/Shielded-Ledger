@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { useReadContract } from 'wagmi';
-import { formatUnits } from 'viem';
-import { abis } from '@/lib/contracts';
+import { abis } from "@/lib/contracts";
+import { useEffect, useState } from "react";
+import { formatUnits } from "viem";
+import { useReadContract } from "wagmi";
 
 interface TokenInputProps {
   label: string;
@@ -19,7 +19,7 @@ export function TokenInput({
   onChange,
   tokenAddress,
   userAddress,
-  placeholder = '0.0',
+  placeholder = "0.0",
   disabled = false,
 }: TokenInputProps) {
   const [showMax, setShowMax] = useState(false);
@@ -28,21 +28,21 @@ export function TokenInput({
   const { data: symbol } = useReadContract({
     address: tokenAddress,
     abi: abis.MockERC20,
-    functionName: 'symbol',
+    functionName: "symbol",
     query: { enabled: !!tokenAddress },
   });
 
   const { data: decimals } = useReadContract({
     address: tokenAddress,
     abi: abis.MockERC20,
-    functionName: 'decimals',
+    functionName: "decimals",
     query: { enabled: !!tokenAddress },
   });
 
   const { data: balance } = useReadContract({
     address: tokenAddress,
     abi: abis.MockERC20,
-    functionName: 'balanceOf',
+    functionName: "balanceOf",
     args: userAddress ? [userAddress] : undefined,
     query: { enabled: !!tokenAddress && !!userAddress },
   });
@@ -59,7 +59,7 @@ export function TokenInput({
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-300">{label}</label>
+      <label className="block font-medium text-gray-300 text-sm">{label}</label>
       <div className="relative">
         <input
           type="number"
@@ -68,24 +68,27 @@ export function TokenInput({
           placeholder={placeholder}
           disabled={disabled}
           step="any"
-          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-purple-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed pr-24"
+          className="bg-white/5 disabled:opacity-50 px-4 py-3 pr-24 border border-white/10 focus:border-purple-500 focus:outline-none w-full transition-all disabled:cursor-not-allowed"
         />
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+        <div className="top-1/2 right-3 absolute flex items-center gap-2 -translate-y-1/2">
           {showMax && !disabled && (
             <button
               type="button"
               onClick={handleMaxClick}
-              className="px-2 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded text-xs font-medium transition-colors"
+              className="bg-purple-500/20 hover:bg-purple-500/30 px-2 py-1 rounded font-medium text-purple-300 text-xs transition-colors"
             >
               MAX
             </button>
           )}
-          {symbol && <span className="text-gray-400 text-sm">{symbol as string}</span>}
+          {symbol && (
+            <span className="text-gray-400 text-sm">{symbol as string}</span>
+          )}
         </div>
       </div>
       {balance !== undefined && decimals !== undefined && (
-        <p className="text-xs text-gray-400">
-          Balance: {formatUnits(balance as bigint, decimals as number)} {symbol as string}
+        <p className="text-gray-400 text-xs">
+          Balance: {formatUnits(balance as bigint, decimals as number)}{" "}
+          {symbol as string}
         </p>
       )}
     </div>

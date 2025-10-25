@@ -23,7 +23,7 @@ export function Navigation({ className }: NavigationProps) {
     <header className={cn("flex justify-between items-center mb-12", className)}>
       {/* Logo */}
       <Link href="/" className="flex items-center space-x-3 group">
-        <div className="w-12 h-12 bg-gradient-to-br from-yellow-accent to-golden-accent rounded-xl flex items-center justify-center transform group-hover:scale-105 transition-all duration-300 glow-button">
+        <div className="w-12 h-12 bg-gradient-to-br from-yellow-accent to-golden-accent flex items-center justify-center transform group-hover:scale-105 transition-all duration-300 glow-button corner-cut">
           <Shield className="w-7 h-7 text-black" />
         </div>
         <div>
@@ -32,28 +32,30 @@ export function Navigation({ className }: NavigationProps) {
         </div>
       </Link>
 
-      {/* Navigation Items */}
-      <nav className="hidden md:flex items-center space-x-1">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href;
-          
-          return (
-            <Link key={item.href} href={item.href}>
-              <Button
-                variant={isActive ? "default" : "ghost"}
-                className={cn(
-                  "flex items-center space-x-2 transition-all duration-300",
-                  isActive && "corner-cut"
-                )}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="font-medium">{item.label}</span>
-              </Button>
-            </Link>
-          );
-        })}
-      </nav>
+      {/* Navigation Items - Hidden on home page */}
+      {pathname !== '/' && (
+        <nav className="hidden md:flex items-center space-x-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+            
+            return (
+              <Link key={item.href} href={item.href}>
+                <Button
+                  variant={isActive ? "default" : "ghost"}
+                  className={cn(
+                    "flex items-center space-x-2 transition-all duration-300 corner-cut",
+                    isActive && "shadow-lg shadow-yellow-accent/20"
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="font-medium">{item.label}</span>
+                </Button>
+              </Link>
+            );
+          })}
+        </nav>
+      )}
 
       {/* Connect Wallet */}
       <div className="flex items-center space-x-4">
@@ -85,7 +87,7 @@ export function Navigation({ className }: NavigationProps) {
                     return (
                       <Button
                         onClick={openConnectModal}
-                        className=""
+                        className="corner-cut"
                       >
                         Connect Wallet
                       </Button>
@@ -97,7 +99,7 @@ export function Navigation({ className }: NavigationProps) {
                       <Button
                         onClick={openChainModal}
                         variant="destructive"
-                        className=""
+                        className="corner-cut"
                       >
                         Wrong network
                       </Button>
@@ -136,7 +138,7 @@ export function Navigation({ className }: NavigationProps) {
 
                       <Button
                         onClick={openAccountModal}
-                        className=""
+                        className="corner-cut"
                       >
                         {account.displayName}
                         {account.displayBalance
