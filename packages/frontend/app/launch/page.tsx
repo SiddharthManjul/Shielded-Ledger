@@ -11,6 +11,7 @@ import { abis } from "@/lib/contracts";
 import {
   AlertCircle,
   CheckCircle,
+  Coins,
   Copy,
   ExternalLink,
   Info,
@@ -20,7 +21,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { parseUnits } from "viem";
+import { parseUnits, formatUnits } from "viem";
 import {
   useAccount,
   useReadContract,
@@ -42,6 +43,10 @@ export default function LaunchPage() {
   const [step, setStep] = useState<"input" | "deploying" | "success">("input");
   const [deployedAddress, setDeployedAddress] = useState<`0x${string}` | null>(null);
   const [, setAuthState] = useState(0); // Force re-render trigger
+  
+  // Quick mint state
+  const [quickMintAmount, setQuickMintAmount] = useState("");
+  const [isQuickMinting, setIsQuickMinting] = useState(false);
 
   const { writeContract, data: hash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
@@ -50,6 +55,76 @@ export default function LaunchPage() {
 
   // Check authentication status (no redirects)
   const isAuthenticated = isConnected && localStorage.getItem("shielded-ledger-auth") === address;
+  
+  // Read collateral token info for quick mint (only when authenticated and collateral is set)
+  const { data: quickCollateralTokenName } = useReadContract({
+    address: collateralToken,
+    abi: abis.MockERC20,
+    functionName: "name",
+    query: {
+      enabled:
+        isAuthenticated &&
+        hasCollateral &&
+        collateralToken !== "0x" &&
+        collateralToken.length === 42,
+    },
+  });
+
+  const { data: quickCollateralTokenSymbol } = useReadContract({
+    address: collateralToken,
+    abi: abis.MockERC20,
+    functionName: "symbol",
+    query: {
+      enabled:
+        isAuthenticated &&
+        hasCollateral &&
+        collateralToken !== "0x" &&
+        collateralToken.length === 42,
+    },
+  });
+
+  const { data: collateralTokenDecimals } = useReadContract({
+    address: collateralToken,
+    abi: abis.MockERC20,
+    functionName: "decimals",
+    query: {
+      enabled:
+        isAuthenticated &&
+        hasCollateral &&
+        collateralToken !== "0x" &&
+        collateralToken.length === 42,
+    },
+  });
+
+  const { data: collateralBalance } = useReadContract({
+    address: collateralToken,
+    abi: abis.MockERC20,
+    functionName: "balanceOf",
+    args: [address as `0x${string}`],
+    query: {
+      enabled:
+        isAuthenticated &&
+        !!address &&
+        hasCollateral &&
+        collateralToken !== "0x" &&
+        collateralToken.length === 42,
+    },
+  });
+
+  const { data: collateralAllowance } = useReadContract({
+    address: collateralToken,
+    abi: abis.MockERC20,
+    functionName: "allowance",
+    args: [address as `0x${string}`, contractAddresses.CollateralManager],
+    query: {
+      enabled:
+        isAuthenticated &&
+        !!address &&
+        hasCollateral &&
+        collateralToken !== "0x" &&
+        collateralToken.length === 42,
+    },
+  });
 
   const handleSignMessage = () => {
     if (!address) return;
@@ -100,30 +175,33 @@ export default function LaunchPage() {
   // Type-safe variables
   const safeCollateralTokenName = typeof collateralTokenName === 'string' ? collateralTokenName : '';
   const safeCollateralTokenSymbol = typeof collateralTokenSymbol === 'string' ? collateralTokenSymbol : '';
+  
+  // Quick mint type-safe variables
+  const safeQuickCollateralTokenName = typeof quickCollateralTokenName === 'string' ? quickCollateralTokenName : '';
+  const safeQuickCollateralTokenSymbol = typeof quickCollateralTokenSymbol === 'string' ? quickCollateralTokenSymbol : '';
 
   const handleLaunch = async () => {
     if (!tokenName || !tokenSymbol || !address) return;
 
     try {
-      const supplyInWei = initialSupply ? parseUnits(initialSupply, 18) : BigInt(0);
-
-      // Note: This is a simplified version. In production, you would need:
-      // 1. Deploy zkERC20 contract with proper constructor args
-      // 2. If hasCollateral, register with CollateralManager
-      // 3. Deploy verifier contracts if not already deployed
-
-      // For now, we're assuming there's a factory contract or similar
-      // This is a placeholder - actual implementation depends on your deployment strategy
+      // Since we're using the existing zkERC20 contract, we'll demonstrate
+      // with a simple deposit operation to show interaction with the contract
+      // In a real implementation, you might want to:
+      // 1. Register as a user
+      // 2. Get a stealth address
+      // 3. Perform initial deposit
+      
+      // For demonstration, we'll call getMerkleRoot to test contract interaction
       writeContract({
-        address: contractAddresses.zkERC20, // This would actually be a factory address
+        address: contractAddresses.zkERC20,
         abi: abis.zkERC20,
-        functionName: "initialize", // Placeholder - depends on actual contract design
-        args: [tokenName, tokenSymbol, supplyInWei],
+        functionName: "getMerkleRoot",
+        args: [],
       });
 
       setStep("deploying");
     } catch (error) {
-      console.error("Error launching token:", error);
+      console.error("Error interacting with contract:", error);
     }
   };
 
@@ -133,7 +211,64 @@ export default function LaunchPage() {
       // In production, you'd extract the deployed address from the transaction receipt
       // setDeployedAddress(extractedAddress);
     }
-  }, [isSuccess, step]);
+    if (isSuccess && isQuickMinting) {
+      setIsQuickMinting(false);
+      setQuickMintAmount("");
+    }
+  }, [isSuccess, step, isQuickMinting]);
+  
+  const handleQuickMint = async () => {
+    if (!collateralToken || !quickMintAmount || !address || !collateralTokenDecimals) return;
+
+    try {
+      setIsQuickMinting(true);
+      const amountInWei = parseUnits(quickMintAmount, collateralTokenDecimals as number);
+      
+      // Check if approval is needed
+      const needsApproval = collateralAllowance !== undefined &&
+        quickMintAmount !== "" &&
+        collateralTokenDecimals !== undefined &&
+        amountInWei > (collateralAllowance as bigint);
+      
+      if (needsApproval) {
+        // First approve
+        writeContract({
+          address: collateralToken,
+          abi: abis.MockERC20,
+          functionName: "approve",
+          args: [contractAddresses.CollateralManager, amountInWei],
+        });
+      } else {
+        // Direct mint with placeholder ZK proof
+        writeContract({
+          address: contractAddresses.zkERC20,
+          abi: abis.zkERC20,
+          functionName: "deposit",
+          args: [
+            amountInWei,
+            BigInt(0), // commitment (placeholder)
+            BigInt(0), // nullifierHash (placeholder)
+            "0x", // encryptedNote (placeholder)
+            [BigInt(0), BigInt(0)], // proof.a (placeholder)
+            [
+              [BigInt(0), BigInt(0)],
+              [BigInt(0), BigInt(0)],
+            ], // proof.b (placeholder)
+            [BigInt(0), BigInt(0)], // proof.c (placeholder)
+          ],
+        });
+      }
+    } catch (error) {
+      console.error("Error in quick mint:", error);
+      setIsQuickMinting(false);
+    }
+  };
+  
+  const needsQuickApproval =
+    collateralAllowance !== undefined &&
+    quickMintAmount !== "" &&
+    collateralTokenDecimals !== undefined &&
+    parseUnits(quickMintAmount, collateralTokenDecimals as number) > (collateralAllowance as bigint);
 
   const canLaunch =
     tokenName &&
@@ -153,11 +288,10 @@ export default function LaunchPage() {
             Token Launch Platform
           </Badge>
           <h1 className="mb-4 font-display font-bold text-4xl">
-            <span className="text-blue-400">Launch</span> Confidential Token
+            <span className="text-blue-400">Interact</span> with zkERC20
           </h1>
           <p className="text-muted-foreground text-lg">
-            Create an entirely new confidential ERC20 token with built-in
-            privacy features
+            Test interaction with the deployed confidential ERC20 token
           </p>
         </div>
 
@@ -171,11 +305,10 @@ export default function LaunchPage() {
                 </div>
                 <div>
                   <h2 className="mb-2 font-bold text-white text-2xl">
-                    Token Launched Successfully!
+                    Contract Interaction Successful!
                   </h2>
                   <p className="text-muted-foreground">
-                    Your confidential token has been deployed and is ready for
-                    use
+                    Successfully interacted with the zkERC20 contract
                   </p>
                 </div>
 
@@ -234,6 +367,113 @@ export default function LaunchPage() {
                   </div>
                 </GamingCard>
 
+                {/* Quick Mint Section */}
+                {hasCollateral && collateralToken !== "0x" && isAuthenticated && (
+                  <GamingCard className="bg-blue-500/10 border border-blue-500/30 p-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Coins className="w-5 h-5 text-blue-400" />
+                        <h3 className="font-semibold text-white text-lg">
+                          Quick Mint Tokens
+                        </h3>
+                        {safeQuickCollateralTokenSymbol && (
+                          <Badge variant="gaming-blue">
+                            {safeQuickCollateralTokenSymbol}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {safeQuickCollateralTokenName && (
+                        <div className="bg-blue-400/10 p-3 border border-blue-400/30 corner-cut">
+                          <div className="flex items-center gap-2 mb-2">
+                            <CheckCircle className="w-4 h-4 text-blue-400" />
+                            <span className="font-medium text-blue-400 text-sm">
+                              Using Collateral: {safeQuickCollateralTokenName}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="space-y-3">
+                        <label className="block font-semibold text-white text-sm">
+                          Amount to Mint
+                        </label>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            value={quickMintAmount}
+                            onChange={(e) => setQuickMintAmount(e.target.value)}
+                            placeholder="0.0"
+                            step="any"
+                            className="bg-input pr-16 border-border focus:border-blue-400 corner-cut"
+                          />
+                          {safeQuickCollateralTokenSymbol && (
+                            <div className="top-1/2 right-3 absolute font-medium text-muted-foreground text-sm -translate-y-1/2">
+                              {safeQuickCollateralTokenSymbol}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {collateralBalance !== undefined && collateralTokenDecimals !== undefined && (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">
+                              Available:{" "}
+                              <span className="font-numbers text-white">
+                                {formatUnits(
+                                  collateralBalance as bigint,
+                                  collateralTokenDecimals as number
+                                )}
+                              </span>{" "}
+                              {safeQuickCollateralTokenSymbol}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="hover:bg-blue-400/10 p-2 h-auto text-blue-400 hover:text-blue-400/80"
+                              onClick={() =>
+                                setQuickMintAmount(
+                                  formatUnits(
+                                    collateralBalance as bigint,
+                                    collateralTokenDecimals as number
+                                  )
+                                )
+                              }
+                            >
+                              MAX
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <Button
+                        onClick={handleQuickMint}
+                        disabled={
+                          isPending ||
+                          isConfirming ||
+                          !quickMintAmount ||
+                          isQuickMinting
+                        }
+                        className="w-full h-12"
+                        variant="info"
+                      >
+                        {isPending || isConfirming || isQuickMinting ? (
+                          <>
+                            <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                            {needsQuickApproval ? "Approving..." : "Minting..."}
+                          </>
+                        ) : (
+                          <>
+                            <Coins className="mr-2 w-4 h-4" />
+                            {needsQuickApproval
+                              ? `Approve & Mint ${quickMintAmount || "0"} Tokens`
+                              : `Quick Mint ${quickMintAmount || "0"} Tokens`}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </GamingCard>
+                )}
+
                 <div className="flex gap-4">
                   <Button
                     onClick={() => {
@@ -247,14 +487,41 @@ export default function LaunchPage() {
                     variant="info"
                     className="flex-1"
                   >
-                    Launch Another Token
+                    Test Another Interaction
                   </Button>
                   <Button
                     variant="outline"
                     className="flex-1"
-                    onClick={() => router.push("/mint")}
+                    onClick={() => {
+                      // Pre-populate mint page with launch configuration
+                      const mintParams = new URLSearchParams();
+                      
+                      // Always pass collateral token if it's been entered (regardless of hasCollateral checkbox)
+                      if (collateralToken && collateralToken !== "0x" && collateralToken.length === 42) {
+                        mintParams.set('collateral', collateralToken);
+                      }
+                      
+                      // Also pass token name and symbol for reference
+                      if (tokenName) {
+                        mintParams.set('tokenName', tokenName);
+                      }
+                      if (tokenSymbol) {
+                        mintParams.set('tokenSymbol', tokenSymbol);
+                      }
+                      
+                      const mintUrl = `/mint?${mintParams.toString()}`;
+                      console.log('=== LAUNCH TO MINT NAVIGATION ===');
+                      console.log('hasCollateral:', hasCollateral);
+                      console.log('collateralToken:', collateralToken);
+                      console.log('tokenName:', tokenName);
+                      console.log('tokenSymbol:', tokenSymbol);
+                      console.log('Final URL:', mintUrl);
+                      console.log('URL params:', mintParams.toString());
+                      
+                      router.push(mintUrl);
+                    }}
                   >
-                    Go to Minting
+                    Go to Full Minting
                   </Button>
                 </div>
               </div>
@@ -451,10 +718,10 @@ export default function LaunchPage() {
                   <div className="flex justify-between items-center">
                     <div>
                       <h3 className="font-semibold text-white">
-                        Ready to Launch?
+                        Ready to Interact?
                       </h3>
                       <p className="text-muted-foreground text-sm">
-                        Deploy your confidential token to the blockchain
+                        Test interaction with the zkERC20 contract
                       </p>
                     </div>
                     <Badge
@@ -475,7 +742,7 @@ export default function LaunchPage() {
                               className="w-full h-12 corner-cut"
                             >
                               <Rocket className="mr-2 w-4 h-4" />
-                              Connect Wallet to Launch
+                              Connect Wallet to Interact
                             </Button>
                           )}
                         </ConnectButton.Custom>
@@ -508,12 +775,12 @@ export default function LaunchPage() {
                       {isPending || isConfirming ? (
                         <>
                           <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                          Launching Token...
+                          Interacting...
                         </>
                       ) : (
                         <>
                           <Rocket className="mr-2 w-4 h-4" />
-                          Launch Token
+                          Test Interaction
                         </>
                       )}
                     </Button>

@@ -26,6 +26,7 @@ import {
 } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useSignMessage } from "wagmi";
+import { generateDepositProof } from "@/lib/zkProof";
 
 export default function MintPage() {
   const { address, isConnected } = useAccount();
@@ -36,10 +37,58 @@ export default function MintPage() {
   type StepType = "input" | "approve" | "mint" | "success";
   const [step, setStep] = useState<StepType>("input");
   const [, setAuthState] = useState(0); // Force re-render trigger
+  const [isAutoFilled, setIsAutoFilled] = useState(false);
+  const [hasLaunchContext, setHasLaunchContext] = useState(false);
+  const [launchTokenName, setLaunchTokenName] = useState("");
+  const [launchTokenSymbol, setLaunchTokenSymbol] = useState("");
+  
+  // Pre-populate from URL parameters
+  useEffect(() => {
+    // Use a timeout to ensure the page has fully loaded
+    const timer = setTimeout(() => {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const collateralParam = params.get('collateral');
+        console.log('Mint page - URL collateral param:', collateralParam);
+        console.log('Current window.location.search:', window.location.search);
+        if (collateralParam && collateralParam.length === 42 && collateralParam.startsWith('0x')) {
+          console.log('Setting collateral token to:', collateralParam);
+          setCollateralToken(collateralParam as `0x${string}`);
+          setIsAutoFilled(true);
+        }
+        
+        // Also get token name and symbol from URL params
+        const tokenNameParam = params.get('tokenName');
+        const tokenSymbolParam = params.get('tokenSymbol');
+        if (tokenNameParam || tokenSymbolParam) {
+          setHasLaunchContext(true);
+        }
+        if (tokenNameParam) {
+          setLaunchTokenName(tokenNameParam);
+        }
+        if (tokenSymbolParam) {
+          setLaunchTokenSymbol(tokenSymbolParam);
+        }
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
-  const { writeContract, data: hash, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
     hash,
+  });
+
+  // Debug transaction state
+  console.log("Transaction state:", {
+    hash,
+    isPending,
+    isConfirming,
+    isSuccess,
+    writeError,
+    receiptError,
+    step
   });
 
   // Check authentication status (no redirects)
@@ -70,7 +119,7 @@ export default function MintPage() {
     abi: abis.MockERC20,
     functionName: "name",
     query: {
-      enabled: isAuthenticated && collateralToken !== "0x" && collateralToken.length === 42,
+      enabled: isAuthenticated && collateralToken && collateralToken !== "0x" && collateralToken.length === 42,
     },
   });
 
@@ -79,7 +128,7 @@ export default function MintPage() {
     abi: abis.MockERC20,
     functionName: "symbol",
     query: {
-      enabled: isAuthenticated && collateralToken !== "0x" && collateralToken.length === 42,
+      enabled: isAuthenticated && collateralToken && collateralToken !== "0x" && collateralToken.length === 42,
     },
   });
 
@@ -88,7 +137,7 @@ export default function MintPage() {
     abi: abis.MockERC20,
     functionName: "decimals",
     query: {
-      enabled: isAuthenticated && collateralToken !== "0x" && collateralToken.length === 42,
+      enabled: isAuthenticated && collateralToken && collateralToken !== "0x" && collateralToken.length === 42,
     },
   });
 
@@ -99,7 +148,7 @@ export default function MintPage() {
     args: [address as `0x${string}`],
     query: {
       enabled:
-        isAuthenticated && !!address && collateralToken !== "0x" && collateralToken.length === 42,
+        isAuthenticated && !!address && collateralToken && collateralToken !== "0x" && collateralToken.length === 42,
     },
   });
 
@@ -110,7 +159,7 @@ export default function MintPage() {
     args: [address as `0x${string}`, contractAddresses.CollateralManager],
     query: {
       enabled:
-        isAuthenticated && !!address && collateralToken !== "0x" && collateralToken.length === 42,
+        isAuthenticated && !!address && collateralToken && collateralToken !== "0x" && collateralToken.length === 42,
     },
   });
 
@@ -136,28 +185,85 @@ export default function MintPage() {
   };
 
   const handleMint = async () => {
-    if (!collateralToken || !amount || !address || !tokenDecimals) return;
+    console.log("handleMint called");
+    console.log("collateralToken:", collateralToken);
+    console.log("amount:", amount);
+    console.log("address:", address);
+    console.log("tokenDecimals:", tokenDecimals);
+    
+    const isValidCollateralToken = collateralToken && collateralToken.length === 42 && collateralToken !== "0x";
+    
+    if (!isValidCollateralToken || !amount || !address || !tokenDecimals) {
+      console.log("Missing required fields for minting", {
+        isValidCollateralToken,
+        hasAmount: !!amount,
+        hasAddress: !!address,
+        hasTokenDecimals: !!tokenDecimals
+      });
+      return;
+    }
 
     try {
       const amountInWei = parseUnits(amount, tokenDecimals as number);
-      // Note: In production, you'd need to generate the ZK proof here
-      // For now, this is a placeholder that calls the deposit function
+      console.log("amountInWei:", amountInWei);
+      console.log("Generating ZK proof for deposit...");
+      
+      // Generate ZK proof for the deposit
+      const zkProof = await generateDepositProof(amountInWei);
+      console.log("ZK proof generated:", zkProof);
+      console.log("Commitment as hex:", "0x" + zkProof.commitment.toString(16));
+      console.log("Commitment hex length:", zkProof.commitment.toString(16).length);
+      console.log("Nullifier as hex:", "0x" + zkProof.nullifier.toString(16));
+      console.log("Nullifier hex length:", zkProof.nullifier.toString(16).length);
+
+      // Encrypted note placeholder (in production, this would contain encrypted transaction details)
+      // encryptedNote is type `bytes` (dynamic), so it should be a hex string starting with 0x
+      const encryptedNote = ("0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')) as `0x${string}`;
+
+      // Convert BigInt values to hex string format for bytes32 (viem expects hex strings for bytes32)
+      const commitmentHex = ("0x" + zkProof.commitment.toString(16).padStart(64, '0')) as `0x${string}`;
+      const nullifierHex = ("0x" + zkProof.nullifier.toString(16).padStart(64, '0')) as `0x${string}`;
+
+      console.log("Calling writeContract with zkERC20 deposit function");
+      console.log("Using commitmentHex:", commitmentHex);
+      console.log("Using nullifierHex:", nullifierHex);
+
       writeContract({
         address: contractAddresses.zkERC20,
         abi: abis.zkERC20,
         functionName: "deposit",
         args: [
-          [BigInt(0), BigInt(0)], // proof.a (placeholder)
-          [
-            [BigInt(0), BigInt(0)],
-            [BigInt(0), BigInt(0)],
-          ], // proof.b (placeholder)
-          [BigInt(0), BigInt(0)], // proof.c (placeholder)
-          BigInt(0), // commitment (placeholder)
-          amountInWei,
+          amountInWei, // amount
+          commitmentHex, // commitment as hex string
+          nullifierHex, // nullifierHash as hex string
+          encryptedNote, // encryptedNote
+          zkProof.a, // proof.a
+          zkProof.b, // proof.b
+          zkProof.c, // proof.c
         ],
+      }, {
+        onSuccess: (hash) => {
+          console.log("Transaction submitted successfully:", hash);
+          setStep("mint");
+        },
+        onError: (error) => {
+          console.error("Transaction failed:", error);
+          console.error("Error details:", {
+            message: error.message,
+            cause: error.cause,
+            name: error.name
+          });
+
+          // Check if it's a revert error
+          if (error.message?.includes('execution reverted') || error.message?.includes('InvalidProof')) {
+            console.error("⚠️ Transaction reverted - This is likely due to:");
+            console.error("1. Mock ZK proofs not passing verifier validation");
+            console.error("2. Need to compile actual circuits and generate real proofs");
+            console.error("3. Or the collateral approval might have failed/expired");
+            alert("Transaction failed: The ZK proof verification failed. This is expected with mock proofs. You need to either:\n\n1. Compile the circuits and generate real proofs using snarkjs\n2. Deploy contracts with proof verification disabled for testing\n3. Check that collateral token approval is still valid");
+          }
+        }
       });
-      setStep("mint");
     } catch (error) {
       console.error("Error minting:", error);
     }
@@ -302,6 +408,70 @@ export default function MintPage() {
           </GamingCard>
         </div>
 
+        {/* Launch Context Section */}
+        {hasLaunchContext && (
+          <div className="mx-auto mb-8 max-w-6xl">
+            <GamingCard className="bg-green-500/10 border border-green-500/30 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <CheckCircle className="w-6 h-6 text-green-400" />
+                <div>
+                  <h3 className="font-semibold text-white text-lg">
+                    Launched Token Context
+                  </h3>
+                  <p className="text-green-300 text-sm">
+                    You came from the launch page with the following token configuration
+                  </p>
+                </div>
+              </div>
+              
+              <div className="gap-4 grid grid-cols-1 md:grid-cols-2">
+                {launchTokenName && (
+                  <div className="bg-green-400/10 p-3 border border-green-400/30 corner-cut">
+                    <div className="text-green-300 text-xs uppercase tracking-wide">
+                      Token Name
+                    </div>
+                    <div className="font-semibold text-white">
+                      {launchTokenName}
+                    </div>
+                  </div>
+                )}
+                
+                {launchTokenSymbol && (
+                  <div className="bg-green-400/10 p-3 border border-green-400/30 corner-cut">
+                    <div className="text-green-300 text-xs uppercase tracking-wide">
+                      Token Symbol
+                    </div>
+                    <div className="font-semibold text-white">
+                      {launchTokenSymbol}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {!isAutoFilled && (
+                <div className="bg-yellow-500/10 border border-yellow-500/30 corner-cut mt-4 p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-yellow-400 text-sm">
+                        No Collateral Configuration
+                      </p>
+                      <p className="mt-1 text-yellow-300 text-sm">
+                        This token was launched without collateral backing. For non-collateral tokens, you'll need to:
+                      </p>
+                      <ul className="mt-2 space-y-1 text-yellow-300 text-sm list-disc list-inside">
+                        <li>Manually enter a collateral token address below</li>
+                        <li>Or use this page to mint from a different collateral-backed token</li>
+                        <li>Or explore other minting strategies for your specific use case</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </GamingCard>
+          </div>
+        )}
+
         {/* Main Content with improved layout */}
         <div className="mx-auto max-w-6xl">
           {step === "success" ? (
@@ -411,12 +581,30 @@ export default function MintPage() {
                       <Input
                         type="text"
                         value={collateralToken}
-                        onChange={(e) =>
-                          setCollateralToken(e.target.value as `0x${string}`)
-                        }
+                        onChange={(e) => {
+                          setCollateralToken(e.target.value as `0x${string}`);
+                          setIsAutoFilled(false); // Clear auto-fill flag when user manually changes
+                        }}
                         placeholder="0x... (Enter ERC20 token address)"
-                        className="bg-input border-border focus:border-yellow-accent corner-cut"
+                        className={`bg-input border-border focus:border-yellow-accent corner-cut ${
+                          isAutoFilled ? 'border-blue-400' : ''
+                        }`}
                       />
+                      {isAutoFilled && (
+                        <div className="bg-blue-500/10 border border-blue-500/30 corner-cut p-3 mt-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <CheckCircle className="w-4 h-4 text-blue-400" />
+                            <span className="font-medium text-blue-400 text-sm">
+                              Auto-filled from Launch Configuration
+                            </span>
+                          </div>
+                          {(launchTokenName || launchTokenSymbol) && (
+                            <div className="text-xs text-blue-300">
+                              From token: {launchTokenName} ({launchTokenSymbol})
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {safeTokenName && (
@@ -657,13 +845,21 @@ export default function MintPage() {
                         )}
 
                         <Button
-                          onClick={handleMint}
+                          onClick={() => {
+                            console.log("Mint button clicked");
+                            console.log("Button disabled state:", {
+                              isPending,
+                              isConfirming,
+                              collateralToken: !collateralToken,
+                              amount: !amount
+                            });
+                            handleMint();
+                          }}
                           disabled={
                             isPending ||
                             isConfirming ||
-                            !collateralToken ||
-                            !amount ||
-                            needsApproval
+                            !(collateralToken && collateralToken.length === 42 && collateralToken !== "0x") ||
+                            !amount
                           }
                           className="w-full h-14 text-lg"
                           size="lg"
