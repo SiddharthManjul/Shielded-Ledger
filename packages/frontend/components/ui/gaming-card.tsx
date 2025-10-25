@@ -1,14 +1,20 @@
-import React from 'react';
-import { cn } from '@/lib/utils';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import React from "react";
 
 interface GamingCardProps extends React.HTMLAttributes<HTMLDivElement> {
   title?: string;
   description?: string;
   icon?: React.ReactNode;
   children?: React.ReactNode;
-  variant?: 'default' | 'feature' | 'stats' | 'action';
-  glowColor?: 'yellow' | 'blue' | 'green' | 'purple';
+  variant?: "default" | "feature" | "stats" | "action";
+  glowColor?: "yellow" | "blue" | "green" | "purple";
 }
 
 export function GamingCard({
@@ -16,23 +22,26 @@ export function GamingCard({
   description,
   icon,
   children,
-  variant = 'default',
-  glowColor = 'yellow',
+  variant = "default",
+  glowColor = "yellow",
   className,
   ...props
 }: GamingCardProps) {
   const glowColors = {
-    yellow: 'hover:border-yellow-accent/50 hover:shadow-yellow-accent/20',
-    blue: 'hover:border-blue-500/50 hover:shadow-blue-500/20',
-    green: 'hover:border-green-500/50 hover:shadow-green-500/20',
-    purple: 'hover:border-purple-500/50 hover:shadow-purple-500/20',
+    yellow: "hover:border-yellow-accent/50 hover:shadow-yellow-accent/20",
+    blue: "hover:border-blue-500/50 hover:shadow-blue-500/20",
+    green: "hover:border-green-500/50 hover:shadow-green-500/20",
+    purple: "hover:border-purple-500/50 hover:shadow-purple-500/20",
   };
 
   const cardVariants = {
-    default: 'card-glow',
-    feature: 'card-glow transform hover:scale-105 cursor-pointer transition-all duration-300',
-    stats: 'card-glow border-yellow-accent/30 bg-gradient-to-br from-yellow-accent/5 to-golden/5',
-    action: 'card-glow border-yellow-accent/50 bg-gradient-to-br from-yellow-accent/10 to-transparent',
+    default: "card-glow",
+    feature:
+      "card-glow transform hover:scale-105 cursor-pointer transition-all duration-300",
+    stats:
+      "card-glow border-yellow-accent/30 bg-gradient-to-br from-yellow-accent/5 to-golden/5",
+    action:
+      "card-glow border-yellow-accent/50 bg-gradient-to-br from-yellow-accent/10 to-transparent",
   };
 
   return (
@@ -40,25 +49,25 @@ export function GamingCard({
       className={cn(
         cardVariants[variant],
         glowColors[glowColor],
-        'overflow-hidden relative',
+        "overflow-hidden relative",
         className
       )}
       {...props}
     >
       {/* Background pattern */}
       <div className="absolute inset-0 grid-pattern opacity-20 pointer-events-none" />
-      
+
       {/* Content */}
-      <div className="relative z-10">
+      <div className="z-10 relative">
         {(title || description || icon) && (
           <CardHeader className="space-y-3">
             {icon && (
-              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-yellow-accent/20 to-golden/20 border border-yellow-accent/30">
+              <div className="flex justify-center items-center bg-gradient-to-br from-yellow-accent/20 to-golden/20 border border-yellow-accent/30 w-12 h-12">
                 {icon}
               </div>
             )}
             {title && (
-              <CardTitle className="text-xl font-bold text-white">
+              <CardTitle className="font-bold text-white text-xl">
                 {title}
               </CardTitle>
             )}
@@ -69,9 +78,11 @@ export function GamingCard({
             )}
           </CardHeader>
         )}
-        
+
         {children && (
-          <CardContent className={cn(!title && !description && !icon && "pt-6")}>
+          <CardContent
+            className={cn(!title && !description && !icon && "pt-6")}
+          >
             {children}
           </CardContent>
         )}
@@ -93,23 +104,28 @@ interface CountdownBoxProps {
   label?: string;
 }
 
-export function CountdownBox({ timeLeft, label = "Sale ends in:" }: CountdownBoxProps) {
+export function CountdownBox({
+  timeLeft,
+  label = "Sale ends in:",
+}: CountdownBoxProps) {
   return (
-    <div className="countdown-box text-center">
+    <div className="text-center countdown-box">
       {label && (
-        <p className="text-sm text-yellow-accent font-medium mb-3">{label}</p>
+        <p className="mb-3 font-medium text-yellow-accent text-sm">{label}</p>
       )}
-      <div className="flex items-center justify-center space-x-4">
+      <div className="flex justify-center items-center space-x-4">
         {Object.entries(timeLeft).map(([unit, value], index) => (
           <React.Fragment key={unit}>
             <div className="text-center">
-              <div className="text-2xl md:text-3xl font-numbers font-bold text-white">
-                {value.toString().padStart(2, '0')}
+              <div className="font-numbers font-bold text-white text-2xl md:text-3xl">
+                {value.toString().padStart(2, "0")}
               </div>
-              <div className="text-xs text-muted-foreground capitalize">{unit}</div>
+              <div className="text-muted-foreground text-xs capitalize">
+                {unit}
+              </div>
             </div>
             {index < Object.entries(timeLeft).length - 1 && (
-              <div className="text-yellow-accent text-xl font-bold">:</div>
+              <div className="font-bold text-yellow-accent text-xl">:</div>
             )}
           </React.Fragment>
         ))}
@@ -122,15 +138,21 @@ interface StatsCardProps {
   title: string;
   value: string | number;
   change?: string;
-  changeType?: 'positive' | 'negative' | 'neutral';
+  changeType?: "positive" | "negative" | "neutral";
   icon?: React.ReactNode;
 }
 
-export function StatsCard({ title, value, change, changeType = 'neutral', icon }: StatsCardProps) {
+export function StatsCard({
+  title,
+  value,
+  change,
+  changeType = "neutral",
+  icon,
+}: StatsCardProps) {
   const changeColors = {
-    positive: 'text-green-400',
-    negative: 'text-red-400',
-    neutral: 'text-muted-foreground',
+    positive: "text-green-400",
+    negative: "text-red-400",
+    neutral: "text-muted-foreground",
   };
 
   return (
@@ -138,16 +160,23 @@ export function StatsCard({ title, value, change, changeType = 'neutral', icon }
       <div className="space-y-3">
         {icon && (
           <div className="flex justify-center">
-            <div className="p-3 rounded-lg bg-yellow-accent/20 text-yellow-accent">
+            <div className="bg-yellow-accent/20 p-3 text-yellow-accent">
               {icon}
             </div>
           </div>
         )}
         <div>
-          <div className="text-2xl font-numbers font-bold text-white">{value}</div>
-          <div className="text-sm text-muted-foreground">{title}</div>
+          <div className="font-numbers font-bold text-white text-2xl">
+            {value}
+          </div>
+          <div className="text-muted-foreground text-sm">{title}</div>
           {change && (
-            <div className={cn("text-xs mt-1 font-numbers", changeColors[changeType])}>
+            <div
+              className={cn(
+                "mt-1 font-numbers text-xs",
+                changeColors[changeType]
+              )}
+            >
               {change}
             </div>
           )}
