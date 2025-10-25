@@ -6,7 +6,6 @@ bun.lock
 # Build outputs
 .next/
 out/
-build/
 dist/
 
 # Foundry
@@ -15,14 +14,6 @@ out/
 broadcast/
 
 # Circom
-*.r1cs
-*.wasm
-*.sym
-*.zkey
-*.vkey
-*.wtns
-packages/circuits/build/
-packages/circuits/contracts/
 
 # Environment variables
 .env
@@ -55,11 +46,3 @@ coverage/
 *.tsbuildinfo
 
 packages/contracts/lib
-
-pot16_0000.ptau
-pot16_0001.ptau
-pot16_final.ptau
-
-deposit_verification_key.json
-transfer_verification_key.json
-withdraw_verification_key.json

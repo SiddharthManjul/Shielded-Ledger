@@ -274,7 +274,7 @@ export default function Home() {
                 },
               ].map((item) => (
                 <div key={item.step} className="flex items-start space-x-4">
-                  <div className="flex flex-shrink-0 justify-center items-center bg-yellow-accent w-8 h-8 font-numbers font-bold text-black text-sm corner-cut">
+                  <div className="flex shrink-0 justify-center items-center bg-yellow-accent w-8 h-8 font-numbers font-bold text-black text-sm corner-cut">
                     {item.step}
                   </div>
                   <div>
