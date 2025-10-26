@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {PoseidonT3} from "./PoseidonT3.sol";
+
 library MerkleTree {
     uint256 public constant TREE_DEPTH = 20;
     uint256 public constant MAX_LEAVES = 2 ** TREE_DEPTH;
@@ -14,12 +16,11 @@ library MerkleTree {
     }
 
     function hashLeftRight(bytes32 left, bytes32 right) internal pure returns (bytes32 result) {
-        result = keccak256(abi.encodePacked(left, right));
+        result = PoseidonT3.hash(left, right);
     }
 
     function zeros(uint256 level) internal pure returns (bytes32 zero) {
         if (level == 0) return ZERO_VALUE;
-        if (level == 1) return keccak256(abi.encodePacked(ZERO_VALUE, ZERO_VALUE));
 
         bytes32 subZero = zeros(level - 1);
         return hashLeftRight(subZero, subZero);
