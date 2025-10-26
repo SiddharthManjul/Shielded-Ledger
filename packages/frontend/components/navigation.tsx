@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { Shield, Rocket, Coins } from 'lucide-react';
+import { Shield, Rocket, Coins, Wallet, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -15,15 +15,17 @@ export function Navigation({ className }: NavigationProps) {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/mint', label: 'Mint Tokens', icon: Coins },
-    { href: '/launch', label: 'Launch Token', icon: Rocket },
+    { href: '/dashboard', label: 'Dashboard', icon: Wallet },
+    { href: '/mint', label: 'Mint', icon: Coins },
+    { href: '/transfer', label: 'Transfer', icon: Send },
+    { href: '/launch', label: 'Launch', icon: Rocket },
   ];
 
   return (
     <header className={cn("flex justify-between items-center mb-12", className)}>
       {/* Logo */}
       <Link href="/" className="flex items-center space-x-3 group">
-        <div className="w-12 h-12 bg-gradient-to-br from-yellow-accent to-golden-accent flex items-center justify-center transform group-hover:scale-105 transition-all duration-300 glow-button corner-cut">
+        <div className="w-12 h-12 bg-linear-to-br from-yellow-accent to-golden-accent flex items-center justify-center transform group-hover:scale-105 transition-all duration-300 glow-button corner-cut">
           <Shield className="w-7 h-7 text-black" />
         </div>
         <div>

@@ -13,6 +13,7 @@
     "fmt:check": "forge fmt --check"
   },
   "dependencies": {
-    "@pythnetwork/pyth-sdk-solidity": "^4.2.0"
+    "@pythnetwork/pyth-sdk-solidity": "^4.2.0",
+    "poseidon-solidity": "^0.0.5"
   }
 }
