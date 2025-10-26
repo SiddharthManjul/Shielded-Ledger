@@ -189,6 +189,9 @@ export async function GET(request: NextRequest) {
           amount: "0", // We don't have amount without CollateralLocked
           spent: false,
           encryptedNote: encryptedNote,
+          sender: "0x0000000000000000000000000000000000000000", // Not available without CollateralLocked
+          blockNumber: noteLog.blockNumber.toString(),
+          transactionHash: noteLog.transactionHash,
         };
       });
 

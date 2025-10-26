@@ -53,7 +53,6 @@ interface DashboardStats {
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
   const { signMessage } = useSignMessage();
-  const [notes, setNotes] = useState<Note[]>([]);
   const [, setAuthState] = useState(0);
   const [stats, setStats] = useState<DashboardStats>({
     totalNotes: 0,
@@ -123,89 +122,6 @@ export default function DashboardPage() {
       console.log("Migration complete");
     }
   }, [address]);
-
-  // Fetch user's notes from blockchain using client-side indexer
-  useEffect(() => {
-    if (!isAuthenticated || !address) return;
-
-    const fetchNotes = async () => {
-      try {
-        console.log("[Dashboard] Starting blockchain indexing...");
-
-        // Use HyperSync API to fetch from blockchain
-        const response = await fetch(`/api/hypersync-indexer?address=${address}&fromBlock=0`);
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error("[Dashboard] API error details:", errorData);
-          throw new Error(`API error: ${response.status} - ${errorData.details || 'Unknown error'}`);
-        }
-
-        const result = await response.json();
-
-        console.log(`[Dashboard] Indexed ${result.notes.length} notes`);
-
-        // Convert indexed notes to dashboard format
-        const fetchedNotes: Note[] = result.notes.map((note: Note) => ({
-          commitment: note.commitment,
-          index: note.index,
-          amount: BigInt(note.amount),
-          secret: "", // Not available from blockchain
-          nullifier: "", // Not available from blockchain
-          spent: note.spent,
-        }));
-
-        setNotes(fetchedNotes);
-        setTotalBalance(BigInt(result.totalBalance));
-        console.log(`[Dashboard] Loaded ${fetchedNotes.length} notes with balance: ${result.totalBalance}`);
-
-        // Also save to localStorage for offline access
-        const notesForStorage = fetchedNotes.map(note => ({
-          ...note,
-          amount: note.amount.toString(),
-        }));
-        localStorage.setItem(`notes-indexed-${address}`, JSON.stringify(notesForStorage));
-
-      } catch (error) {
-        console.error("[Dashboard] Error indexing blockchain:", error);
-
-        // Fallback to localStorage
-        console.log("[Dashboard] Falling back to localStorage");
-        try {
-          // Try indexed cache first
-          let storedNotes = localStorage.getItem(`notes-indexed-${address}`);
-          if (!storedNotes) {
-            // Fall back to minted notes
-            storedNotes = localStorage.getItem(`notes-${address}`);
-          }
-
-          if (storedNotes) {
-            const parsedNotes: Note[] = JSON.parse(storedNotes).map((note: Note) => ({
-              ...note,
-              amount: BigInt(note.amount),
-            }));
-            setNotes(parsedNotes);
-            const total = parsedNotes
-              .filter(note => !note.spent)
-              .reduce((sum, note) => sum + note.amount, BigInt(0));
-            setTotalBalance(total);
-            console.log(`[Dashboard] Loaded ${parsedNotes.length} notes from localStorage`);
-          } else {
-            setNotes([]);
-            setTotalBalance(BigInt(0));
-          }
-        } catch (storageError) {
-          console.error("[Dashboard] Error reading from localStorage:", storageError);
-          setNotes([]);
-          setTotalBalance(BigInt(0));
-        }
-      } finally {
-        // Indexing complete
-      }
-    };
-
-    fetchNotes();
-  }, [isAuthenticated, address]);
 
   // Fetch all dashboard stats and commitments
   useEffect(() => {
