@@ -1,0 +1,22 @@
+{
+  "name": "@shielded-ledger/indexer",
+  "version": "1.0.0",
+  "description": "HyperSync indexer for Shielded Ledger transactions",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "tsx watch index.ts",
+    "start": "tsx index.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@envio-dev/hypersync-client": "^0.6.6",
+    "dotenv": "^17.2.3",
+    "ethers": "^6.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  }
+}
