@@ -1,5 +1,5 @@
 import { DepositProof } from '@/types/contracts';
-// @ts-ignore - snarkjs types
+// @ts-expect-error - snarkjs types
 import * as snarkjs from 'snarkjs';
 
 // Real ZK proof generation using compiled circuits
@@ -262,6 +262,6 @@ export async function generateTransferProof(
   }
 }
 
-export async function generateWithdrawProof(/* params */): Promise<any> {
+export async function generateWithdrawProof(/* params */): Promise<DepositProof> {
   throw new Error("Withdraw proof generation not yet implemented");
 }

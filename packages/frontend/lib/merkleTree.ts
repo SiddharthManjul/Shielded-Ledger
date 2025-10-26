@@ -9,7 +9,12 @@ export class MerkleTree {
   private zeros: bigint[];
   private totalLeaves: number;
   private leaves: Map<number, bigint>;
-  private poseidon: any;
+  private poseidon: {
+    (inputs: bigint[]): unknown;
+    F: {
+      toObject(value: unknown): bigint;
+    };
+  } | null = null;
 
   constructor(levels: number, zeroValue: bigint = BigInt(0)) {
     this.levels = levels;
@@ -38,6 +43,9 @@ export class MerkleTree {
   }
 
   hash(left: bigint, right: bigint): bigint {
+    if (!this.poseidon) {
+      throw new Error("Poseidon hash function not initialized. Call initialize() first.");
+    }
     const hash = this.poseidon([left, right]);
     return this.poseidon.F.toObject(hash);
   }
@@ -177,7 +185,7 @@ export async function fetchAllCommitments() {
     console.log(`[Merkle Tree] HyperSync found ${data.notes.length} notes`);
 
     // Convert notes to commitments with indices
-    return data.notes.map((note: any) => ({
+    return data.notes.map((note: { commitment: string; index: number }) => ({
       commitment: note.commitment,
       index: note.index,
     }));
@@ -192,7 +200,14 @@ export async function fetchAllCommitments() {
 
     const currentBlock = await publicClient.getBlockNumber();
     const BLOCK_RANGE = BigInt(100);
-    const allLogs: any[] = [];
+    interface LogResult {
+      args: {
+        commitment?: `0x${string}` | undefined;
+        index?: bigint | undefined;
+        encryptedNote?: `0x${string}` | undefined;
+      };
+    }
+    const allLogs: LogResult[] = [];
 
     console.log(`[Merkle Tree] Fetching logs from block 0 to ${currentBlock} in chunks of ${BLOCK_RANGE}...`);
 
@@ -222,9 +237,11 @@ export async function fetchAllCommitments() {
 
     console.log(`[Merkle Tree] Total events found: ${allLogs.length}`);
 
-    return allLogs.map((log) => ({
-      commitment: log.args.commitment as string,
-      index: Number(log.args.index),
-    }));
+    return allLogs
+      .filter((log) => log.args.commitment && log.args.index !== undefined)
+      .map((log) => ({
+        commitment: log.args.commitment as string,
+        index: Number(log.args.index),
+      }));
   }
 }

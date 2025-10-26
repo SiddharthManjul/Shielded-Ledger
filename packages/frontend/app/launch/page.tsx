@@ -41,7 +41,7 @@ export default function LaunchPage() {
   const [hasCollateral, setHasCollateral] = useState(false);
   const [collateralToken, setCollateralToken] = useState<`0x${string}`>("0x");
   const [step, setStep] = useState<"input" | "deploying" | "success">("input");
-  const [deployedAddress, setDeployedAddress] = useState<`0x${string}` | null>(null);
+  const [deployedAddress] = useState<`0x${string}` | null>(null);
   const [, setAuthState] = useState(0); // Force re-render trigger
   
   // Quick mint state

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Shield, Rocket, Coins, Wallet, Send } from 'lucide-react';
@@ -127,10 +128,11 @@ export function Navigation({ className }: NavigationProps) {
                             }}
                           >
                             {chain.iconUrl && (
-                              <img
+                              <Image
                                 alt={chain.name ?? 'Chain icon'}
                                 src={chain.iconUrl}
-                                style={{ width: 16, height: 16 }}
+                                width={16}
+                                height={16}
                               />
                             )}
                           </div>

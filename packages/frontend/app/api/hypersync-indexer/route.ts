@@ -12,6 +12,40 @@ async function getHypersync() {
 const COLLATERAL_LOCKED_SIGNATURE = "0xae7d0e244967d1d55809231f77a6b423ba7fc44647dcb7889f6ae77029175d08"; // CollateralLocked(address,address,uint256,bytes32)
 const NOTE_COMMITTED_SIGNATURE = "0x7de4af0af526d60801c09e058cb312c537ebd0ac1fc7b85f5072a5df2a48930b"; // NoteCommitted(bytes32,uint256,bytes)
 
+interface Log {
+  topic0?: string;
+  topic1?: string;
+  topic2?: string;
+  topic3?: string;
+  data?: string;
+  transactionHash?: string;
+  blockNumber?: number;
+  logIndex?: number;
+  topics?: (string | null | undefined)[];
+  [key: string]: unknown;
+}
+
+interface Note {
+  commitment: string;
+  index: number;
+  amount: string;
+  spent: boolean;
+  encryptedNote: string;
+  sender?: string;
+  blockNumber?: string;
+  transactionHash?: string;
+}
+
+interface Deposit {
+  txHash: string;
+  blockNumber: number;
+  timestamp: number;
+  commitment: string;
+  amount: string;
+  index: number;
+  encryptedNote: string;
+}
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const userAddress = searchParams.get("address");
@@ -73,14 +107,14 @@ export async function GET(request: NextRequest) {
 
     console.log(`[HyperSync API] Querying CollateralLocked events...`);
     const collateralReceiver = await client.stream(collateralQuery, {});
-    const collateralLogs: any[] = [];
+    const collateralLogs: Log[] = [];
 
     while (true) {
       const res = await collateralReceiver.recv();
       if (res === null) break;
 
       if (res.data.logs && res.data.logs.length > 0) {
-        collateralLogs.push(...res.data.logs);
+        collateralLogs.push(...(res.data.logs as Log[]));
       }
     }
 
@@ -92,7 +126,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Extract commitments from CollateralLocked events
-    const commitments = collateralLogs.map(log => log.topic3);
+    const commitments = collateralLogs.map(log => log.topic3).filter((topic): topic is string => topic !== undefined);
 
     if (commitments.length === 0 && !allNotes) {
       console.log(`[HyperSync API] No collateral locked events found for user`);
@@ -141,13 +175,13 @@ export async function GET(request: NextRequest) {
       };
 
       const allNotesReceiver = await client.stream(allNotesQuery, {});
-      const allNotesLogs: any[] = [];
+      const allNotesLogs: Log[] = [];
 
       while (true) {
         const res = await allNotesReceiver.recv();
         if (res === null) break;
         if (res.data.logs && res.data.logs.length > 0) {
-          allNotesLogs.push(...res.data.logs);
+          allNotesLogs.push(...(res.data.logs as Log[]));
         }
       }
 
@@ -159,10 +193,10 @@ export async function GET(request: NextRequest) {
 
       // Sort logs by block number and log index to ensure correct order
       allNotesLogs.sort((a, b) => {
-        if (a.blockNumber !== b.blockNumber) {
-          return a.blockNumber - b.blockNumber;
+        if ((a.blockNumber || 0) !== (b.blockNumber || 0)) {
+          return (a.blockNumber || 0) - (b.blockNumber || 0);
         }
-        return a.logIndex - b.logIndex;
+        return (a.logIndex || 0) - (b.logIndex || 0);
       });
 
       // Process all notes with sequential indices
@@ -173,13 +207,13 @@ export async function GET(request: NextRequest) {
         // data contains: index and encryptedNote (non-indexed)
 
         const commitment = noteLog.topic1 || (noteLog.topics ? noteLog.topics[1] : null);
-        const dataHex = noteLog.data.startsWith('0x') ? noteLog.data.slice(2) : noteLog.data;
+        const dataHex = noteLog.data?.startsWith('0x') ? noteLog.data.slice(2) : noteLog.data;
 
         // Use sequential index based on order of events
         // This matches how the contract increments noteCount
         const index = idx;
-        const length = parseInt(dataHex.slice(64, 128), 16);
-        const encryptedNote = "0x" + dataHex.slice(128, 128 + length * 2);
+        const length = dataHex ? parseInt(dataHex.slice(64, 128), 16) : 0;
+        const encryptedNote = dataHex ? "0x" + dataHex.slice(128, 128 + length * 2) : "0x";
 
         console.log("[HyperSync API] Processing note:", { commitment, index, blockNumber: noteLog.blockNumber, logIndex: noteLog.logIndex });
 
@@ -190,7 +224,7 @@ export async function GET(request: NextRequest) {
           spent: false,
           encryptedNote: encryptedNote,
           sender: "0x0000000000000000000000000000000000000000", // Not available without CollateralLocked
-          blockNumber: noteLog.blockNumber.toString(),
+          blockNumber: noteLog.blockNumber?.toString() || "0",
           transactionHash: noteLog.transactionHash,
         };
       });
@@ -237,14 +271,14 @@ export async function GET(request: NextRequest) {
 
     console.log(`[HyperSync API] Querying NoteCommitted events...`);
     const noteReceiver = await client.stream(noteQuery, {});
-    const noteLogs: any[] = [];
+    const noteLogs: Log[] = [];
 
     while (true) {
       const res = await noteReceiver.recv();
       if (res === null) break;
 
       if (res.data.logs && res.data.logs.length > 0) {
-        noteLogs.push(...res.data.logs);
+        noteLogs.push(...(res.data.logs as Log[]));
       }
     }
 
@@ -256,34 +290,34 @@ export async function GET(request: NextRequest) {
     }
 
     // Match CollateralLocked with NoteCommitted events
-    const notes: any[] = [];
-    const deposits: any[] = [];
+    const notes: Note[] = [];
+    const deposits: Deposit[] = [];
 
     for (const collateralLog of collateralLogs) {
       const commitment = collateralLog.topic3; // commitment is topic3
       const amount = collateralLog.data; // amount is in data field
 
       // Find matching NoteCommitted event
-      const noteLog = noteLogs.find((nl: any) => nl.topic1 === commitment);
+      const noteLog = noteLogs.find((nl: Log) => nl.topic1 === commitment);
 
       if (noteLog) {
         // Parse the data field for NoteCommitted: (uint256 index, bytes encryptedNote)
         // ABI encoding: [index (32 bytes)][offset to bytes (32 bytes)][length of bytes (32 bytes)][bytes data]
-        const dataHex = noteLog.data.startsWith('0x') ? noteLog.data.slice(2) : noteLog.data;
+        const dataHex = noteLog.data?.startsWith('0x') ? noteLog.data.slice(2) : noteLog.data;
 
         // First 64 chars (32 bytes) = index
-        const index = parseInt(dataHex.slice(0, 64), 16);
+        const index = dataHex ? parseInt(dataHex.slice(0, 64), 16) : 0;
 
         // Next 64 chars (32 bytes) = offset to bytes array (usually 0x40 = 64) - we skip this
 
         // Next 64 chars (32 bytes) = length of bytes array
-        const length = parseInt(dataHex.slice(128, 192), 16);
+        const length = dataHex ? parseInt(dataHex.slice(128, 192), 16) : 0;
 
         // Remaining data is the encryptedNote bytes
-        const encryptedNote = "0x" + dataHex.slice(192, 192 + length * 2);
+        const encryptedNote = dataHex ? "0x" + dataHex.slice(192, 192 + length * 2) : "0x";
 
         notes.push({
-          commitment: commitment,
+          commitment: commitment || "0x",
           index: index,
           amount: amount ? BigInt(amount).toString() : "0",
           spent: false,
@@ -291,10 +325,10 @@ export async function GET(request: NextRequest) {
         });
 
         deposits.push({
-          txHash: collateralLog.transactionHash,
-          blockNumber: Number(collateralLog.blockNumber),
+          txHash: collateralLog.transactionHash || "0x",
+          blockNumber: Number(collateralLog.blockNumber || 0),
           timestamp: 0,
-          commitment: commitment,
+          commitment: commitment || "0x",
           amount: amount ? BigInt(amount).toString() : "0",
           index: index,
           encryptedNote: encryptedNote,

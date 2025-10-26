@@ -80,15 +80,15 @@ export function TokenInput({
               MAX
             </button>
           )}
-          {symbol && (
-            <span className="text-gray-400 text-sm">{symbol as string}</span>
-          )}
+          {typeof symbol === "string" ? (
+            <span className="text-gray-400 text-sm">{symbol}</span>
+          ) : null}
         </div>
       </div>
       {balance !== undefined && decimals !== undefined && (
         <p className="text-gray-400 text-xs">
           Balance: {formatUnits(balance as bigint, decimals as number)}{" "}
-          {symbol as string}
+          {typeof symbol === "string" ? symbol : ""}
         </p>
       )}
     </div>
