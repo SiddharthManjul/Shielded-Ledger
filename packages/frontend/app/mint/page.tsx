@@ -23,6 +23,7 @@ import {
   useReadContract,
   useWaitForTransactionReceipt,
   useWriteContract,
+  usePublicClient,
 } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useSignMessage } from "wagmi";
@@ -31,6 +32,7 @@ import { generateDepositProof } from "@/lib/zkProof";
 export default function MintPage() {
   const { address, isConnected } = useAccount();
   const { signMessage } = useSignMessage();
+  const publicClient = usePublicClient();
   const router = useRouter();
   const [collateralToken, setCollateralToken] = useState<`0x${string}`>("0x");
   const [amount, setAmount] = useState("");
@@ -41,6 +43,13 @@ export default function MintPage() {
   const [hasLaunchContext, setHasLaunchContext] = useState(false);
   const [launchTokenName, setLaunchTokenName] = useState("");
   const [launchTokenSymbol, setLaunchTokenSymbol] = useState("");
+  const [lastMintedNote, setLastMintedNote] = useState<{
+    amount: bigint;
+    secret: string;
+    nullifier: string;
+    commitment: string;
+    blockNumber?: string;
+  } | null>(null);
   
   // Pre-populate from URL parameters
   useEffect(() => {
@@ -152,7 +161,7 @@ export default function MintPage() {
     },
   });
 
-  const { data: allowance } = useReadContract({
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: collateralToken,
     abi: abis.MockERC20,
     functionName: "allowance",
@@ -272,8 +281,15 @@ export default function MintPage() {
       console.log("✅ Allowance check passed!");
       console.log("Generating ZK proof for deposit...");
 
+      // Generate random secret and nullifier for the note (large random values for security)
+      const secret = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER).toString();
+      const nullifier = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER).toString();
+
+      console.log("Generated secret:", secret);
+      console.log("Generated nullifier:", nullifier);
+
       // Generate ZK proof for the deposit
-      const zkProof = await generateDepositProof(amountInWei);
+      const zkProof = await generateDepositProof(amountInWei, secret, nullifier);
       console.log("ZK proof generated:", zkProof);
       console.log("Commitment as hex:", "0x" + zkProof.commitment.toString(16));
       console.log("Commitment hex length:", zkProof.commitment.toString(16).length);
@@ -300,6 +316,16 @@ export default function MintPage() {
       console.log("Amount in Wei:", amountInWei.toString());
       console.log("========================");
 
+      // Store note data for later use when transaction succeeds
+      // IMPORTANT: Store the ORIGINAL nullifier, not the nullifierHash
+      // The zkProof.nullifier is actually the hash of the nullifier
+      setLastMintedNote({
+        amount: amountInWei,
+        secret,  // Original secret (decimal string)
+        nullifier: nullifier,  // Original nullifier (decimal string), NOT the hash!
+        commitment: commitmentHex,
+      });
+
       writeContract({
         address: contractAddresses.zkERC20,
         abi: abis.zkERC20,
@@ -314,9 +340,35 @@ export default function MintPage() {
           zkProof.c, // proof.c
         ],
       }, {
-        onSuccess: (hash) => {
+        onSuccess: async (hash) => {
           console.log("Transaction submitted successfully:", hash);
           setStep("mint");
+
+          // Get the transaction receipt to fetch block number and event data
+          if (publicClient) {
+            try {
+              const receipt = await publicClient.waitForTransactionReceipt({ hash });
+              console.log("Transaction confirmed in block:", receipt.blockNumber);
+
+              // Save the first mint block number as deployment block for efficient future indexing
+              const deploymentBlockKey = 'zkERC20-first-mint-block';
+              const existingBlock = localStorage.getItem(deploymentBlockKey);
+              if (!existingBlock) {
+                localStorage.setItem(deploymentBlockKey, receipt.blockNumber.toString());
+                console.log("Saved first mint block for future indexing:", receipt.blockNumber);
+              }
+
+              // Store block number with the note
+              if (lastMintedNote) {
+                setLastMintedNote({
+                  ...lastMintedNote,
+                  blockNumber: receipt.blockNumber.toString(),
+                });
+              }
+            } catch (error) {
+              console.error("Error getting transaction receipt:", error);
+            }
+          }
         },
         onError: (error) => {
           console.error("❌ Transaction failed:", error);
@@ -353,11 +405,44 @@ export default function MintPage() {
 
   useEffect(() => {
     if (isSuccess && step === "approve") {
-      setStep("input");
+      console.log("Approval successful! Refetching allowance...");
+      // Refetch allowance to get updated value
+      refetchAllowance();
+      // Small delay to ensure blockchain state is updated
+      setTimeout(() => {
+        setStep("input");
+        console.log("Ready to mint! Allowance should be updated.");
+      }, 1000);
     } else if (isSuccess && step === "mint") {
       setStep("success");
+
+      // Store the note in localStorage
+      if (lastMintedNote && address) {
+        try {
+          const notesKey = `notes-${address}`;
+          const existingNotes = localStorage.getItem(notesKey);
+          const notes = existingNotes ? JSON.parse(existingNotes) : [];
+
+          // Add the new note
+          notes.push({
+            commitment: lastMintedNote.commitment,
+            index: notes.length, // This should be fetched from the event in production
+            amount: lastMintedNote.amount.toString(),
+            secret: lastMintedNote.secret,
+            nullifier: lastMintedNote.nullifier,
+            spent: false,
+            blockNumber: lastMintedNote.blockNumber,
+          });
+
+          localStorage.setItem(notesKey, JSON.stringify(notes));
+          console.log("Note stored in localStorage:", lastMintedNote);
+          setLastMintedNote(null); // Clear after storing
+        } catch (error) {
+          console.error("Error storing note:", error);
+        }
+      }
     }
-  }, [isSuccess, step]);
+  }, [isSuccess, step, lastMintedNote, address, refetchAllowance]);
 
   const needsApproval =
     allowance !== undefined &&
