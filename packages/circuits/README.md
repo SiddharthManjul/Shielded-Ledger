@@ -1,4 +1,4 @@
-# DiffiPay Circuits
+# Shielded Ledger Circuits
 
 Zero-knowledge circuits for DiffiPay built with Circom.
 
